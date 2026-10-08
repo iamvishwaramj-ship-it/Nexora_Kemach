@@ -153,6 +153,24 @@ const GenerateOrderManual = lazy(() => import('../pages/productionPlanning/Gener
 const GenerateOrderSalesOrder = lazy(() => import('../pages/productionPlanning/GenerateOrderSalesOrder'));
 const GenerateOrderForecast = lazy(() => import('../pages/productionPlanning/GenerateOrderForecast'));
 const GenerateOrderProject = lazy(() => import('../pages/productionPlanning/GenerateOrderProject'));
+const GeneratedOrders = lazy(() => import('../pages/productionPlanning/GeneratedOrders'));
+const PEProductionOrders = lazy(() => import('../pages/productionPlanning/productionExecution/ProductionOrders'));
+const PEViewOrder = lazy(() => import('../pages/productionPlanning/productionExecution/ViewOrder'));
+const PEOperations = lazy(() => import('../pages/productionPlanning/productionExecution/Operations'));
+const PEProductionExecutionStatus = lazy(() => import('../pages/productionPlanning/productionExecution/ProductionExecutionStatus'));
+const PEMaterialRequisition = lazy(() => import('../pages/productionPlanning/productionExecution/MaterialRequisition'));
+const PEMaterialIssue = lazy(() => import('../pages/productionPlanning/productionExecution/MaterialIssue'));
+const PEMaterialReceipt = lazy(() => import('../pages/productionPlanning/productionExecution/MaterialReceipt'));
+const PECreateIssue = lazy(() => import('../pages/productionPlanning/productionExecution/CreateIssue'));
+const PERecordProduction = lazy(() => import('../pages/productionPlanning/productionExecution/RecordProduction'));
+const PEProductionHistory = lazy(() => import('../pages/productionPlanning/productionExecution/ProductionHistory'));
+const PEProductCost = lazy(() => import('../pages/productionPlanning/productionExecution/ProductCost'));
+const PEReworkScrap = lazy(() => import('../pages/productionPlanning/productionExecution/ReworkScrap'));
+const PEProductionCompletion = lazy(() => import('../pages/productionPlanning/productionExecution/ProductionCompletion'));
+const PEProductionClosure = lazy(() => import('../pages/productionPlanning/productionExecution/ProductionClosure'));
+const PEReports = lazy(() => import('../pages/productionPlanning/productionExecution/Reports'));
+const PENotes = lazy(() => import('../pages/productionPlanning/productionExecution/Notes'));
+const PECreateRequisition = lazy(() => import('../pages/productionPlanning/productionExecution/CreateRequisition'));
 
 // User Management
 const UserManagement = lazy(() => import('../pages/user/UserManagement'));
@@ -337,11 +355,37 @@ export default function AppRouter() {
             <Route path="generate-order-mrp" element={<GenerateOrderMrp />} />
             <Route path="order-generation-option" element={<OrderGenerationOption />} />
             <Route path="preview-order" element={<PreviewOrder />} />
-            <Route path="generate-order" element={<GenerateOrder />} />
+            {/* "Generate Order" (plain) is the sidebar entry point for the whole
+                generation flow; it renders the same method-selection hub as
+                "Generate Order - MRP" (MRP is the default/active method there). */}
+            <Route path="generate-order" element={<GenerateOrderMrp />} />
             <Route path="generate-order-manual" element={<GenerateOrderManual />} />
             <Route path="generate-order-sales-order" element={<GenerateOrderSalesOrder />} />
             <Route path="generate-order-forecast" element={<GenerateOrderForecast />} />
             <Route path="generate-order-project" element={<GenerateOrderProject />} />
+            <Route path="generated-orders" element={<GeneratedOrders />} />
+          </Route>
+
+          {/* Production Execution (own top-level menu, sibling to Production Planning) */}
+          <Route path="production-execution">
+            <Route index element={<SubMenuIndexPage navKey="production-execution" />} />
+            <Route path="production-orders" element={<PEProductionOrders />} />
+            <Route path="view-order" element={<PEViewOrder />} />
+            <Route path="operations" element={<PEOperations />} />
+            <Route path="production-execution-status" element={<PEProductionExecutionStatus />} />
+            <Route path="material-requisition" element={<PEMaterialRequisition />} />
+            <Route path="material-issue" element={<PEMaterialIssue />} />
+            <Route path="material-receipt" element={<PEMaterialReceipt />} />
+            <Route path="create-issue" element={<PECreateIssue />} />
+            <Route path="record-production" element={<PERecordProduction />} />
+            <Route path="production-history" element={<PEProductionHistory />} />
+            <Route path="product-cost" element={<PEProductCost />} />
+            <Route path="rework-scrap" element={<PEReworkScrap />} />
+            <Route path="production-completion" element={<PEProductionCompletion />} />
+            <Route path="production-closure" element={<PEProductionClosure />} />
+            <Route path="reports" element={<PEReports />} />
+            <Route path="notes" element={<PENotes />} />
+            <Route path="create-requisition" element={<PECreateRequisition />} />
           </Route>
 
           {/* Reports */}

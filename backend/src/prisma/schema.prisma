@@ -3871,3 +3871,74 @@ model whsnote {
 
   @@ignore
 }
+
+// ---------------------------------------------------------------------------
+// Production Planning > Forecast Plan
+// ---------------------------------------------------------------------------
+// Added for the Production Planning > Forecast screen (frontend
+// pages/productionPlanning/Forecast.jsx). A plan is the saved header (scope +
+// date range); its lines are the per-item Actual/Forecast Demand numbers the
+// server computed from real Sales Invoice history at save/run time (see
+// services/forecastPlanService.js) -- never typed in by hand and never mock
+// data. Deliberately plain/additive, same shape family as JournalEntry +
+// JournalEntryLine above: one header, N lines, lines replaced wholesale on
+// every recompute (see journal_entry_lines' own comment for why).
+//
+// actualMonths/forecastMonths are stored as a JSON-encoded string
+// (NVarChar(Max)) rather than their own child table -- a precedent already
+// used in this codebase for a per-record array of simple values (see
+// AppUser-scoped column preferences in routes/users.js, `hiddenColumns:
+// JSON.stringify(...)`). Each decodes to an array of { month: 'YYYY-MM',
+// qty } objects. This keeps the common case (render the saved series back
+// into the same month columns) a single read with no joins, at the cost of
+// not being queryable by month in SQL -- acceptable here because nothing
+// else in the app needs to aggregate across saved forecast lines by month.
+model ProductionForecastPlan {
+  id                 Int                           @id @default(autoincrement())
+  planNo             String                        @unique @map("plan_no") @db.NVarChar(50)
+  planName           String                        @map("plan_name") @db.NVarChar(150)
+  forecastPeriod     String                        @default("N'Monthly'", map: "DF_prod_forecast_plans_period") @map("forecast_period") @db.NVarChar(20)
+  fromMonth          DateTime                      @map("from_month") @db.Date
+  toMonth            DateTime                      @map("to_month") @db.Date
+  planType           String                        @default("N'Statistical Forecast'", map: "DF_prod_forecast_plans_plan_type") @map("plan_type") @db.NVarChar(30)
+  version            String?                       @db.NVarChar(20)
+  // Scope filters -- cross-master-by-name, same convention as
+  // Product.productGroup / SalesOrder.customer / Warehouse.branch elsewhere
+  // in this schema: these store the master record's NAME, not a numeric FK.
+  // 'All'/empty means unscoped (every eligible product/branch/customer).
+  branch             String?                       @db.NVarChar(150)
+  itemGroup          String?                       @map("item_group") @db.NVarChar(100)
+  itemCategory       String?                       @map("item_category") @db.NVarChar(50)
+  customer           String?                       @db.NVarChar(150)
+  includeSafetyStock Boolean                       @default(true, map: "DF_prod_forecast_plans_include_safety_stock") @map("include_safety_stock")
+  notes              String?                       @db.NVarChar(Max)
+  status             String                        @default("N'Draft'", map: "DF_prod_forecast_plans_status") @db.NVarChar(20)
+  createdById        Int?                          @map("created_by_id")
+  createdByName      String?                       @map("created_by_name") @db.NVarChar(100)
+  createdAt          DateTime                      @default(now(), map: "DF_prod_forecast_plans_created_at") @map("created_at")
+  updatedAt          DateTime                      @updatedAt @map("updated_at")
+  lines              ProductionForecastPlanLine[]
+
+  @@index([status, updatedAt], map: "IX_ProdForecastPlan_Status_UpdatedAt")
+  @@map("production_forecast_plans")
+}
+
+model ProductionForecastPlanLine {
+  id             Int                     @id @default(autoincrement())
+  planId         Int                     @map("plan_id")
+  productCode    String                  @map("product_code") @db.NVarChar(50)
+  productName    String?                 @map("product_name") @db.NVarChar(150)
+  uom            String?                 @db.NVarChar(50)
+  // JSON-encoded arrays -- see the model-level comment above.
+  actualMonths   String?                 @map("actual_months") @db.NVarChar(Max)
+  forecastMonths String?                 @map("forecast_months") @db.NVarChar(Max)
+  method         String?                 @db.NVarChar(50)
+  safetyStock    Decimal                 @default(0, map: "DF_prod_forecast_plan_lines_safety_stock") @map("safety_stock") @db.Decimal(15, 2)
+  totalForecast  Decimal                 @default(0, map: "DF_prod_forecast_plan_lines_total_forecast") @map("total_forecast") @db.Decimal(15, 2)
+  included       Boolean                 @default(true, map: "DF_prod_forecast_plan_lines_included")
+  plan           ProductionForecastPlan? @relation(fields: [planId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([planId], map: "IX_ProdForecastPlanLine_PlanId")
+  @@index([productCode], map: "IX_ProdForecastPlanLine_ProductCode")
+  @@map("production_forecast_plan_lines")
+}

@@ -131,6 +131,13 @@ const PATH_TO_MENU_KEY = {
   '/banking/cheques': 'cheque-print',
   '/banking/payment-receipts': 'payment-receipt',
   '/banking/payment-vouchers': 'payment-voucher',
+
+  // --- Production Planning --------------------------------------------------
+  // Only the saved-plan writes are governed here — '/production-planning/
+  // forecast-plans/preview' is a compute-only, nothing-persisted POST and is
+  // listed in UNGOVERNED_POSTS below instead, the same way document-numbers'
+  // peek endpoints are.
+  '/production-planning/forecast-plans': 'production-planning-forecast',
 };
 
 // Prefixes sorted longest-first so the lookup below can return on first match.
@@ -164,6 +171,7 @@ const UNGOVERNED_POSTS = [
   '/company/document-numbers/preview',
   '/company/document-numbers/rollover',
   '/business-partners/next-code',
+  '/production-planning/forecast-plans/preview',
 ];
 
 const ACTION_BY_METHOD = {

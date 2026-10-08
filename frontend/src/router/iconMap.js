@@ -81,6 +81,11 @@ import Visibility from '@mui/icons-material/Visibility';
 import PlaylistAddCheck from '@mui/icons-material/PlaylistAddCheck';
 import EditNote from '@mui/icons-material/EditNote';
 import Engineering from '@mui/icons-material/Engineering';
+import PrecisionManufacturing from '@mui/icons-material/PrecisionManufacturing';
+import Build from '@mui/icons-material/Build';
+import TaskAlt from '@mui/icons-material/TaskAlt';
+import DoneAll from '@mui/icons-material/DoneAll';
+import PostAdd from '@mui/icons-material/PostAdd';
 
 export const iconMap = {
   Dashboard, Business, Domain, AccountTree, DateRange, Numbers, Percent,
@@ -104,6 +109,11 @@ export const iconMap = {
   PlaylistAddCheck,
   EditNote,
   Engineering,
+  PrecisionManufacturing,
+  Build,
+  TaskAlt,
+  DoneAll,
+  PostAdd,
 };
 
 export function getNavIcon(name) {

@@ -78,6 +78,11 @@ app.use('/api/users', require('./routes/users'));
 // resources router for the same reason /api/users is (bespoke handling,
 // not the generic CRUD shape).
 app.use('/api/notifications', require('./routes/notifications'));
+// Production Planning > Forecast — bespoke compute/aggregate endpoints
+// (real Sales Invoice history + statistical projection), not the generic
+// CRUD shape. See routes/productionPlanning.js and
+// services/forecastPlanService.js.
+app.use('/api/production-planning', require('./routes/productionPlanning'));
 // Every other resource (products, customers, suppliers, purchase, sales,
 // inventory, receivables, payables, banking) shares the generic CRUD shape
 // and is mounted in one place — see routes/resources.js.

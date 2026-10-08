@@ -27,8 +27,9 @@
 //   dashboard 4.23/4.02   company 3.74/4.54   accounting 3.68/4.61
 //   product   3.86/4.39   partner 3.46/4.91   purchase   3.70/4.59
 //   sales     3.51/4.84   inventory 3.86/4.40 receivables 4.72/3.60
-//   payables  4.86/3.49   banking 5.21/3.26   reports    4.82/3.53
-//   user      4.13/4.11   settings 3.35/5.07
+//   payables  4.86/3.49   banking 5.21/3.26
+//   productionPlanning 4.62/3.68   productionExecution 4.95/3.44
+//   reports   4.82/3.53   user    4.13/4.11   settings 3.35/5.07
 //
 // The hues run in order around the wheel following the nav's own top-to-bottom
 // order (red -> orange -> gold -> olive -> green -> teal -> cyan -> blue ->
@@ -53,6 +54,8 @@ export const SIDEBAR_ICON_COLORS = {
   receivables: '#2A6FE0', // blue
   payables: '#5C6BC0',    // indigo
   banking: '#7E57C2',     // deep purple
+  'production-planning': '#8D6E63',  // brown
+  'production-execution': '#D81B60', // pink / crimson
   reports: '#AB47BC',     // violet
   user: '#DE3A8B',        // magenta
   settings: '#78909C',    // blue-grey (neutral: chrome, not a section)

@@ -232,6 +232,8 @@ export const baseApi = createApi({
     'Notification',
     // Settings > "E-Invoice / E-Way Bill Settings" card.
     'EInvoiceSettings',
+    // Production Planning > Forecast Plan.
+    'ProductionForecastPlan',
   ],
   endpoints: () => ({}),
 });
