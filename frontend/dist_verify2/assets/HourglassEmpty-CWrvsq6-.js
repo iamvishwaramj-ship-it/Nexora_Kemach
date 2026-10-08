@@ -1,0 +1,1 @@
+import{l as r,j as t,m as a}from"./index-CCF7ae3G.js";var e={},u=a;Object.defineProperty(e,"__esModule",{value:!0});var l=e.default=void 0,o=u(r()),s=t;l=e.default=(0,o.default)((0,s.jsx)("path",{d:"M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2zm10 14.5V20H8v-3.5l4-4zm-4-5-4-4V4h8v3.5z"}),"HourglassEmpty");export{l as d};

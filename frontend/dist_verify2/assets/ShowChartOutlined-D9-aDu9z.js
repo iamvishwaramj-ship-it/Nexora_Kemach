@@ -1,0 +1,1 @@
+import{l as t,j as r,m as a}from"./index-CCF7ae3G.js";var e={},u=a;Object.defineProperty(e,"__esModule",{value:!0});var o=e.default=void 0,i=u(t()),l=r;o=e.default=(0,i.default)((0,l.jsx)("path",{d:"m3.5 18.49 6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"}),"ShowChartOutlined");export{o as d};

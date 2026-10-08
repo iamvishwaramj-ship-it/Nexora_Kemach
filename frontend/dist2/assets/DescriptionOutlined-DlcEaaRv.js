@@ -1,0 +1,1 @@
+import{l as t,j as r,m as a}from"./index-Da-Ih398.js";var e={},i=a;Object.defineProperty(e,"__esModule",{value:!0});var u=e.default=void 0,o=i(t()),v=r;u=e.default=(0,o.default)((0,v.jsx)("path",{d:"M8 16h8v2H8zm0-4h8v2H8zm6-10H6c-1.1 0-2 .9-2 2v16c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8zm4 18H6V4h7v5h5z"}),"DescriptionOutlined");export{u as d};

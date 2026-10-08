@@ -1,0 +1,13 @@
+node_modules
+# .env.*
+# .env
+dist
+dist-ssr
+*.local
+# Build output and Vite's temporary config transpiles — regenerated on
+# every build, no reason to track them.
+dist
+vite.config.js.timestamp-*
+*.log
+out_*.js
+err.txt

@@ -1,0 +1,1 @@
+import{l as t,j as r,m as a}from"./index-Da-Ih398.js";var e={},u=a;Object.defineProperty(e,"__esModule",{value:!0});var v=e.default=void 0,o=u(t()),i=r;v=e.default=(0,o.default)((0,i.jsx)("path",{d:"m12 5.69 5 4.5V18h-2v-6H9v6H7v-7.81zM12 3 2 12h3v8h6v-6h2v6h6v-8h3z"}),"HomeOutlined");export{v as d};

@@ -1,0 +1,89 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - backend/**
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - backend/**
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  backendFolderName: 'backend'
+  nodeVersion: '22.x'
+
+stages:
+  - stage: Build
+    displayName: "Build Backend"
+    jobs:
+      - job: Build
+        displayName: "Building Backend"
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(nodeVersion)
+            displayName: 'Installing Node.js'
+          - script: |
+              npm ci
+              npx prisma generate
+              npm run build --if-present
+            workingDirectory: '$(System.DefaultWorkingDirectory)/$(backendFolderName)'
+            displayName: 'Install Dependencies & Build'
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: '$(System.DefaultWorkingDirectory)/$(backendFolderName)'
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: '$(Build.ArtifactStagingDirectory)/backend.zip'
+              replaceExistingArchive: true
+            displayName: 'Archive Backend'
+            
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/backend.zip'
+              artifact: 'backend-drop'
+              publishLocation: 'pipeline'
+            displayName: 'Publish Artifact'
+
+  - stage: DeployProduction
+    displayName: 'Deploying in Azure'
+    dependsOn: Build
+    condition: succeeded()
+
+    jobs:
+      - deployment: DeployProductionBackend
+        displayName: 'Deploy'
+        environment: 'Production'
+
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+
+                # Download the artifact published in the Build stage
+                - task: DownloadPipelineArtifact@2
+                  displayName: 'Download Backend Artifact'
+                  inputs:
+                    buildType: 'current'
+                    artifactName: 'backend-drop'
+                    targetPath: '$(Pipeline.Workspace)/backend-drop'
+
+                # Deploy the downloaded artifact
+                - task: AzureWebApp@1
+                  displayName: 'Deploy Azure Web App'
+                  inputs:
+                    azureSubscription: '$(AZURE_SERVICE_CONNECTION)'
+                    appType: 'webAppLinux'
+                    appName: '$(AZURE_WEBAPP_NAME)'
+                    package: '$(Pipeline.Workspace)/backend-drop/backend.zip'
+                    runtimeStack: 'NODE|22-lts'
+                    startUpCommand: 'npm start'

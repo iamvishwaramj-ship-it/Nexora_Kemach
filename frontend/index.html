@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexora Kemach</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;700&family=Poppins:wght@300;400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&family=Lato:wght@300;400;700&family=Nunito+Sans:wght@300;400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Work+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet" />
+  <style>
+    /* Plain-CSS "NEXORA" splash, shown the instant HTML paints — before the
+       JS bundle has even downloaded, let alone rendered React's own version
+       of this same screen (see NexoraLoadingScreen.jsx, which this mirrors).
+       It lives inside #root itself: React 18's createRoot(...).render()
+       clears any existing children of its container on first render, so
+       this markup disappears on its own the moment the app mounts — no
+       cleanup script needed.
+
+       Theme: reads the same 'nexora_theme' localStorage key the app's own
+       theme picker writes (store/themeSlice.js), synchronously, before
+       paint, so the splash doesn't flash the wrong theme's colors for
+       someone who has switched to dark mode. Falls back to light. */
+    #nx-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 1400;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background: #FAFAF9;
+    }
+    html[data-nx-theme="dark"] #nx-splash { background: #1C1917; }
+
+    #nx-splash .nx-word {
+      display: flex;
+      align-items: center;
+      font-family: Inter, Roboto, Arial, sans-serif;
+      font-weight: 900;
+      font-size: 3rem;
+      /* Spacing between letters is this flex row's `gap`, not
+         letter-spacing — letter-spacing only pads trailing text, so the
+         O ring (not text) got left on just its own small margin instead of
+         the same space every real letter got, reading as a tighter O-R
+         gap. `gap` applies uniformly to every flex item, ring included. */
+      gap: 0.2em;
+      line-height: 1;
+      color: #57534E;
+    }
+    html[data-nx-theme="dark"] #nx-splash .nx-word { color: #FAFAF9; }
+
+    #nx-splash .nx-o {
+      display: inline-block;
+      width: 0.72em;
+      height: 0.72em;
+      border-radius: 50%;
+      border: 0.13em solid #F97316;
+      border-left-color: transparent;
+      animation: nx-o-spin 0.85s linear infinite;
+    }
+    @keyframes nx-o-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #nx-splash .nx-caption {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: Inter, Roboto, Arial, sans-serif;
+      font-weight: 600;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #78716C;
+    }
+    #nx-splash .nx-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #F97316;
+      animation: nx-dot-pulse 1.2s ease-in-out infinite;
+    }
+    #nx-splash .nx-dot:nth-of-type(2) { animation-delay: 0.15s; }
+    #nx-splash .nx-dot:nth-of-type(3) { animation-delay: 0.3s; }
+    @keyframes nx-dot-pulse {
+      0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+      40% { opacity: 1; transform: scale(1.2); }
+    }
+  </style>
+  <script>
+    // Runs before <body> paints — picks the splash's theme synchronously so
+    // there's no flash of the wrong one, same key the app's own theme slice
+    // reads/writes (store/themeSlice.js's STORAGE_KEY).
+    try {
+      var nxTheme = JSON.parse(localStorage.getItem('nexora_theme') || 'null');
+      if (nxTheme && nxTheme.mode === 'dark') {
+        document.documentElement.setAttribute('data-nx-theme', 'dark');
+      }
+    } catch (e) { /* localStorage unavailable — keep the light default */ }
+  </script>
+</head>
+
+<body>
+  <div id="root">
+    <div id="nx-splash">
+      <div class="nx-word">
+        <span>N</span><span>E</span><span>X</span><span class="nx-o" aria-hidden="true"></span><span>R</span><span>A</span>
+      </div>
+      <div class="nx-caption">
+        Loading
+        <span class="nx-dot"></span><span class="nx-dot"></span><span class="nx-dot"></span>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>

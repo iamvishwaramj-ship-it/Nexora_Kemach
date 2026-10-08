@@ -1,0 +1,1 @@
+import{l as r,j as t,m as a}from"./index-CCF7ae3G.js";var e={},u=a;Object.defineProperty(e,"__esModule",{value:!0});var o=e.default=void 0,l=u(r()),i=t;o=e.default=(0,l.default)((0,i.jsx)("path",{d:"M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"}),"Check");export{o as d};

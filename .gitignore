@@ -1,0 +1,7 @@
+tempmem.md
+# Editor swap files and stray scratch files.
+*.swp
+*.swo
+# FUSE filesystem temp artifacts (e.g. files open while being deleted/edited
+# over a network mount) — never needed by the app or hosting.
+.fuse_hidden*

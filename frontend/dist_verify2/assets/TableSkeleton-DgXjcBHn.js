@@ -1,0 +1,1 @@
+import{j as r}from"./index-CCF7ae3G.js";import{b as l,c as m}from"./TableRow-CKICk0a7.js";import{S as n}from"./Skeleton-D5OEoMZi.js";function j({columns:e=5,rows:t=5}){return Array.from({length:t}).map((s,a)=>r.jsx(l,{children:Array.from({length:e}).map((i,o)=>r.jsx(m,{children:r.jsx(n,{variant:"text"})},o))},a))}export{j as T};

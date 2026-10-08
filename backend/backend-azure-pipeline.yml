@@ -1,0 +1,111 @@
+# ==============================================================
+#  Nexora TradeOne — BACKEND Pipeline
+#  Node.js/Express → Azure Web App (Linux)
+#  Repo root contains: frontend/  backend/
+#  This file lives at: backend/backend-azure-pipeline.yml
+# ==============================================================
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - backend/**
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - backend/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  NODE_VERSION: '20.x'
+  SERVICE_CONNECTION: $(AZURE_SERVICE_CONNECTION)
+
+jobs:
+
+# ══════════════════════════════════════════════════════════════
+# JOB 1 — BUILD ONLY
+# Runs on PR to main — validates the build, no deployment
+# ══════════════════════════════════════════════════════════════
+- job: BuildOnly
+  displayName: 'Build Backend (PR validation only)'
+  condition: eq(variables['Build.Reason'], 'PullRequest')
+  steps:
+
+  - task: UseNode@1
+    displayName: 'Use Node $(NODE_VERSION)'
+    inputs:
+      version: '$(NODE_VERSION)'
+
+  - script: |
+      cd $(System.DefaultWorkingDirectory)/backend
+      npm ci
+    displayName: 'Install dependencies'
+
+  - script: |
+      echo "Build validation complete"
+      ls -la $(System.DefaultWorkingDirectory)/backend
+    displayName: 'Verify backend structure'
+
+# ══════════════════════════════════════════════════════════════
+# JOB 2 — BUILD + DEPLOY
+# Runs only when code is merged to main (not on PR)
+# ══════════════════════════════════════════════════════════════
+- job: BuildAndDeploy
+  displayName: 'Build and Deploy to Azure Web App'
+  condition: and(
+    eq(variables['Build.SourceBranch'], 'refs/heads/main'),
+    ne(variables['Build.Reason'], 'PullRequest')
+    )
+  steps:
+
+  - task: UseNode@1
+    displayName: 'Use Node $(NODE_VERSION)'
+    inputs:
+      version: '$(NODE_VERSION)'
+
+  - script: |
+      cd $(System.DefaultWorkingDirectory)/backend
+      npm ci --omit=dev
+    displayName: 'Install production dependencies only'
+
+  - script: |
+      echo "Checking backend structure..."
+      ls -la $(System.DefaultWorkingDirectory)/backend
+      ls -la $(System.DefaultWorkingDirectory)/backend/src
+    displayName: 'Verify backend structure'
+
+  - task: ArchiveFiles@2
+    displayName: 'Zip backend for deployment'
+    inputs:
+      rootFolderOrFile: '$(System.DefaultWorkingDirectory)/backend'
+      includeRootFolder: false
+      archiveType: 'zip'
+      archiveFile: '$(Build.ArtifactStagingDirectory)/backend.zip'
+      replaceExistingArchive: true
+
+  - script: |
+      echo "Checking zip was created..."
+      ls -la $(Build.ArtifactStagingDirectory)/
+    displayName: 'Verify zip created'
+
+  - task: AzureWebApp@1
+    displayName: 'Deploy to Azure Web App'
+    inputs:
+      azureSubscription: '$(SERVICE_CONNECTION)'
+      appType: 'webAppLinux'
+      appName: '$(AZURE_WEBAPP_NAME)'
+      package: '$(Build.ArtifactStagingDirectory)/backend.zip'
+      runtimeStack: 'NODE|20-lts'
+      # Apply committed Prisma migrations before accepting traffic. Without
+      # this, a newly deployed client can query columns that do not yet exist
+      # in Azure SQL (for example sales_employees.signature_key and
+      # sales_invoices.prepared_by), producing HTTP 500 responses.
+      startUpCommand: 'npx prisma migrate deploy --schema=src/prisma/schema.prisma && node src/server.js'

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Bash(netstat -ano)",
+      "Bash(mkdir -p \"D:\\\\Techconz Nexora Pvt Ltd\\\\Techconz_Pro\\\\Nexora_Kemach\\\\Nexora_Kemach\\\\backend\\\\src\\\\prisma\\\\migrations\\\\20260907130000_purchase_order_type_vehicle_transport\")",
+      "Bash(npx prisma *)"
+    ]
+  }
+}

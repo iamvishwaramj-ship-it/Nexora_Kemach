@@ -1,0 +1,8 @@
+node_modules
+# Secrets. .env was tracked, shipping placeholder JWT signing keys and live
+# database credentials to anyone with repository access. Untrack it with:
+#   git rm --cached backend/.env
+# and rotate both the JWT secrets and the database password.
+# .env
+# .env.*
+!.env.example

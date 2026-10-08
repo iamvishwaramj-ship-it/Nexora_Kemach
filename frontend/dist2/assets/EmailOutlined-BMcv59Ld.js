@@ -1,0 +1,1 @@
+import{l as t,j as a,m as r}from"./index-Da-Ih398.js";var e={},u=r;Object.defineProperty(e,"__esModule",{value:!0});var i=e.default=void 0,l=u(t()),o=a;i=e.default=(0,l.default)((0,o.jsx)("path",{d:"M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2zm-2 0-8 5-8-5zm0 12H4V8l8 5 8-5z"}),"EmailOutlined");export{i as d};

@@ -1,0 +1,1 @@
+import{ad as m,ae as l,j as o,af as c}from"./index-CCF7ae3G.js";import{F as x}from"./FormControlLabel-uuBK2-XL.js";import{C as d}from"./Checkbox-CVKCaIRU.js";function f({name:e,label:s,disabled:a=!1}){const t=m(),{control:n}=l();return o.jsx(c,{name:e,control:n,render:({field:r})=>o.jsx(x,{control:o.jsx(d,{...r,checked:!!r.value,disabled:t||a}),label:s})})}export{f as F};

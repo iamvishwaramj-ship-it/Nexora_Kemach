@@ -1,0 +1,1 @@
+import{W as u}from"./resources-DhV_c-tj.js";function c(o,r){const n=!o||!r,{data:e,isFetching:t}=u({productCode:o,warehouse:r},{skip:n,refetchOnMountOrArgChange:!0});return{onHand:n?null:Number((e==null?void 0:e.onHand)??0),isLoading:!n&&t}}export{c as u};

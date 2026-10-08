@@ -1,0 +1,20 @@
+-- Intentionally a no-op.
+--
+-- This migration's original migration.sql went missing from disk (the
+-- directory existed but was empty), which blocks every `prisma migrate`
+-- command with P3015 ("Could not find the migration file... Please delete
+-- the directory or restore the migration file") until something is
+-- restored here.
+--
+-- The stock table's actual structure was already hand-corrected directly
+-- against the live database via a manual SQL query, outside Prisma
+-- migrations entirely. This placeholder deliberately contains no SQL
+-- statements, so restoring it can never re-run, redo, or conflict with
+-- that manual fix — it exists purely so Prisma's migration history has a
+-- file to read for this entry, whether that entry is later marked applied
+-- (`prisma migrate resolve --applied 20260918170000_add_stock_docentry_transnum_branch`)
+-- or left for `migrate deploy` to run as-is (a no-op either way: this file
+-- has nothing in it to execute).
+--
+-- Do not add real ALTER/CREATE statements here without first confirming
+-- against the live database's current (manually-fixed) stock table shape.

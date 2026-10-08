@@ -1,0 +1,96 @@
+# ==============================================================
+#  Nexora TradeOne — FRONTEND Pipeline
+#  React/Vite → Azure Static Web Apps
+#  Repo root contains: frontend/  backend/
+#  This file lives at: frontend/frontend-azure-pipeline.yml
+# ==============================================================
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - frontend/**
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - frontend/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  NODE_VERSION: '20.x'
+  SWA_TOKEN: $(AZURE_STATIC_WEB_APPS_API_TOKEN)
+
+jobs:
+
+# ══════════════════════════════════════════════════════════════
+# JOB 1 — BUILD ONLY
+# Runs on PR to main — validates the build, no deployment
+# ══════════════════════════════════════════════════════════════
+- job: BuildOnly
+  displayName: 'Build Frontend (PR validation only)'
+  condition: eq(variables['Build.Reason'], 'PullRequest')
+  steps:
+
+  - task: UseNode@1
+    displayName: 'Use Node $(NODE_VERSION)'
+    inputs:
+      version: '$(NODE_VERSION)'
+
+  - script: |
+      cd $(System.DefaultWorkingDirectory)/frontend
+      npm ci
+    displayName: 'Install dependencies'
+
+  - script: |
+      cd $(System.DefaultWorkingDirectory)/frontend
+      npm run build
+    displayName: 'Vite build'
+
+# ══════════════════════════════════════════════════════════════
+# JOB 2 — BUILD + DEPLOY
+# Runs only when code is merged to main (not on PR)
+# ══════════════════════════════════════════════════════════════
+- job: BuildAndDeploy
+  displayName: 'Build and Deploy to Azure Static Web Apps'
+  condition: and(
+    eq(variables['Build.SourceBranch'], 'refs/heads/main'),
+    ne(variables['Build.Reason'], 'PullRequest')
+    )
+  steps:
+
+  - task: UseNode@1
+    displayName: 'Use Node $(NODE_VERSION)'
+    inputs:
+      version: '$(NODE_VERSION)'
+
+  - script: |
+      cd $(System.DefaultWorkingDirectory)/frontend
+      npm ci
+    displayName: 'Install dependencies'
+
+  - script: |
+      cd $(System.DefaultWorkingDirectory)/frontend
+      npm run build
+    displayName: 'Vite production build'
+
+  - script: |
+      echo "Build complete. Checking dist folder..."
+      ls -la $(System.DefaultWorkingDirectory)/frontend/dist
+    displayName: 'Verify dist folder exists'
+
+  - task: AzureStaticWebApp@0
+    displayName: 'Deploy to Azure Static Web Apps'
+    inputs:
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
+      app_location: 'frontend/dist'
+      output_location: ''
+      skip_app_build: true
+      azure_static_web_apps_api_token: $(SWA_TOKEN)

@@ -1,0 +1,1 @@
+function d(a,f,n="Save failed"){var o,t;const i=(o=a==null?void 0:a.data)==null?void 0:o.errors;return Array.isArray(i)&&typeof f=="function"&&i.forEach(s=>{s!=null&&s.field&&f(s.field,{type:"server",message:s.message})}),((t=a==null?void 0:a.data)==null?void 0:t.message)||n}export{d as a};
