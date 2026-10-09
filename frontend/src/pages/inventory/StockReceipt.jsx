@@ -426,12 +426,6 @@ export default function StockReceipt() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<Inventory2OutlinedIcon />}
-        title="Stock Receipt"
-        subtitle={view === 'form' ? 'Create a new stock receipt.' : 'Manage and track all stock receipts.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <AppForm

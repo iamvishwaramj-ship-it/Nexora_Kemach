@@ -686,14 +686,6 @@ export default function SalesReturn({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<AssignmentReturnOutlinedIcon />}
-        title="Sales Return"
-        subtitle={view === 'form'
-          ? 'Record goods coming back from a customer against a delivery challan.'
-          : 'Manage goods returned by customers.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="sales" type="return" docNo={editingRow?.returnNo}>

@@ -183,12 +183,7 @@ export default function SalesmanWiseSales() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<Diversity3OutlinedIcon />}
-        title="Salesman-wise Sales"
-        subtitle="View and analyze sales performance grouped by salespersons."
-        rightContent={<CompanyBadge />}
-      />
+
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

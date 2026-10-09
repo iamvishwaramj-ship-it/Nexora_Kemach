@@ -414,12 +414,7 @@ export default function ProductMaster() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<Inventory2OutlinedIcon />}
-        title="Product Master"
-        subtitle="Create and manage products."
-        rightContent={<CompanyBadge />}
-      />
+
 
       <Collapse in={showForm} unmountOnExit>
         <Box sx={{ mb: 2 }}>

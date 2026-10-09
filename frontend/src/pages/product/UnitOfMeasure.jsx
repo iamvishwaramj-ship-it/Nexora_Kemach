@@ -178,12 +178,7 @@ export default function UnitOfMeasure() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<StraightenIcon />}
-        title="Unit of Measure"
-        subtitle="Create and manage units of measure."
-        rightContent={<CompanyBadge />}
-      />
+
 
       {/* The form lives in a modal, same shape as Product Group / Product
           Sub-Group — see ProductGroup.jsx's own Dialog for the reference

@@ -427,12 +427,6 @@ export default function StockIssue() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<Inventory2OutlinedIcon />}
-        title="Stock Issue"
-        subtitle={view === 'form' ? 'Create a new stock issue.' : 'Manage and track all stock issues.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <AppForm

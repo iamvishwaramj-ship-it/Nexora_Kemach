@@ -187,12 +187,6 @@ export default function PurchaseInvoiceRegister() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ReceiptLongOutlinedIcon />}
-        title="Purchase Invoice Register"
-        subtitle="All purchase invoices booked in the selected period."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

@@ -182,12 +182,6 @@ export default function VendorWisePurchase() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<GroupsOutlinedIcon />}
-        title="Vendor-wise Purchase"
-        subtitle="View and analyze purchase performance grouped by vendors."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

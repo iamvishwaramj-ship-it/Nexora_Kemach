@@ -700,12 +700,6 @@ export default function PurchaseGRN({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ReceiptLongOutlinedIcon />}
-        title="Purchase GRN"
-        subtitle={view === 'form' ? 'Create a new goods receipt note.' : 'Manage and track all goods receipt notes.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="purchase" type="grn" docNo={editingRow?.grnNo}>

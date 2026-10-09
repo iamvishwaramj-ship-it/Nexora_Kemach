@@ -345,12 +345,6 @@ export default function BankReconciliation() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<AccountBalanceOutlinedIcon />}
-        title="Bank Reconciliation"
-        subtitle="Reconcile your bank transactions with system records."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Card, CardContent, Stack, Typography, Grid, TextField, MenuItem, Button,
   Chip, Checkbox, InputAdornment, Table, TableHead, TableBody, TableRow, TableCell,
@@ -19,72 +20,64 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import RocketLaunchOutlinedIcon from '@mui/icons-material/RocketLaunchOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-import OutboxOutlinedIcon from '@mui/icons-material/OutboxOutlined';
 import FilterListOutlinedIcon from '@mui/icons-material/FilterListOutlined';
 import EntityHeaderCard from '../../../components/common/EntityHeaderCard';
 import ScrollableTableContainer from '../../../components/data-display/ScrollableTableContainer';
 import EntityListPagination from '../../../components/data-display/EntityListPagination';
+import LoadingState from '../../../components/feedback/LoadingState';
+import EmptyState from '../../../components/data-display/EmptyState';
+import { productionOrderApi, useUpdateProductionOrderStatusMutation } from '../../../features/productionApi';
+import { useNotify } from '../../../components/feedback/NotificationProvider';
 
 // ---------------------------------------------------------------------------
-// Static, UI-only mock of the "Production Orders" screen, built to match the
-// reference design the user supplied. Same convention as the other
-// Production Planning / Production Execution screens already built this way
-// (Generate Order - MRP, Generate Order - Manual, Order Generation Options,
-// Generated Orders): there is no ProductionOrder, WorkCenter, BOM-issue or
-// production-progress data model anywhere in this schema, so this lays out
-// the screen exactly as designed with fixed mock data rather than
-// fabricating "real" numbers against tables that don't exist. Local state
-// only -- nothing here persists or calls the server; row selection just
-// drives which row's details show in the right-hand panel.
+// Production Orders — real data as of Phase A (schema.prisma's
+// ProductionOrder / routes/productionOrders.js), replacing the earlier
+// static mock. Layout, filters and columns are unchanged from the original
+// reference-design build; the Priority/Project/Sales Order/Customer/Work
+// Center fields the original mock showed are not part of the Phase A data
+// model (no priority, project or customer linkage on ProductionOrder yet —
+// Sales Order linkage exists as baseType/baseNo but is only populated once
+// Generate Order/MRP is itself wired in a later phase), so they render as
+// "-" rather than invented values. Produced/Balance qty are not tracked
+// until the Record Production phase exists, so Produced always shows 0 and
+// Balance shows the full planned quantity for now.
 // ---------------------------------------------------------------------------
 
-const STATUS_OPTIONS = ['All', 'Planned', 'Released', 'In Progress', 'Completed'];
+const STATUS_OPTIONS = ['All', 'Planned', 'Released', 'In Progress', 'Completed', 'Closed'];
 const STATUS_META = {
   Planned: { color: 'warning' },
   Released: { color: 'info' },
   'In Progress': { color: 'success' },
   Completed: { color: 'success' },
+  Closed: { color: 'default' },
 };
-
-const PRIORITY_OPTIONS = ['All', 'High', 'Medium', 'Low'];
-const PRIORITY_META = {
-  High: { color: 'error' },
-  Medium: { color: 'warning' },
-  Low: { color: 'info' },
-};
-
-const ORDERS = [
-  { no: 'PO-2026-001', code: 'FG-1001', desc: 'Gear Housing', planned: 500, produced: 320, balance: 180, start: '01-Oct-2026', due: '10-Oct-2026', status: 'Released', priority: 'High' },
-  { no: 'PO-2026-002', code: 'FG-1002', desc: 'Motor Bracket', planned: 300, produced: 300, balance: 0, start: '28-Sep-2026', due: '08-Oct-2026', status: 'Completed', priority: 'Medium' },
-  { no: 'PO-2026-003', code: 'FG-1003', desc: 'Pump Cover', planned: 250, produced: 100, balance: 150, start: '02-Oct-2026', due: '14-Oct-2026', status: 'In Progress', priority: 'High' },
-  { no: 'PO-2026-004', code: 'FG-1004', desc: 'Shaft Assembly', planned: 200, produced: 0, balance: 200, start: '05-Oct-2026', due: '18-Oct-2026', status: 'Planned', priority: 'Medium' },
-  { no: 'PO-2026-005', code: 'FG-1005', desc: 'Valve Body', planned: 150, produced: 40, balance: 110, start: '10-Oct-2026', due: '22-Oct-2026', status: 'In Progress', priority: 'High' },
-  { no: 'PO-2026-006', code: 'FG-1006', desc: 'Flange Plate', planned: 200, produced: 200, balance: 0, start: '15-Sep-2026', due: '05-Oct-2026', status: 'Completed', priority: 'Low' },
-  { no: 'PO-2026-007', code: 'FG-1007', desc: 'Heat Treatment Part', planned: 150, produced: 60, balance: 90, start: '12-Oct-2026', due: '26-Oct-2026', status: 'Released', priority: 'Medium' },
-  { no: 'PO-2026-008', code: 'FG-1008', desc: 'Bearing Housing', planned: 120, produced: 0, balance: 120, start: '18-Oct-2026', due: '28-Oct-2026', status: 'Planned', priority: 'Low' },
-  { no: 'PO-2026-009', code: 'FG-1010', desc: 'Control Panel', planned: 100, produced: 50, balance: 50, start: '20-Oct-2026', due: '30-Oct-2026', status: 'In Progress', priority: 'Medium' },
-  { no: 'PO-2026-010', code: 'FG-1011', desc: 'Electrical Kit', planned: 180, produced: 0, balance: 180, start: '22-Oct-2026', due: '02-Nov-2026', status: 'Released', priority: 'High' },
-];
-
-const TOTAL_ORDER_RECORDS = 12; // cosmetic -- matches "Showing 1 to 10 of 12 records"; only page 1's 10 rows are mocked.
-
-const ORDER_DETAILS_EXTRA = {
-  'PO-2026-001': { workCenter: 'WC-01 - Machining', salesOrder: 'SO-2026-09-001', project: 'PRJ-2026-001', customer: 'Agni Steel Pvt Ltd' },
-  'PO-2026-002': { workCenter: 'WC-02 - Assembly', salesOrder: 'SO-2026-09-002', project: 'PRJ-2026-001', customer: 'XYZ Industries' },
-  'PO-2026-003': { workCenter: 'WC-01 - Machining', salesOrder: 'SO-2026-09-003', project: '-', customer: 'LMN Fabrication' },
-  'PO-2026-004': { workCenter: 'WC-03 - Welding', salesOrder: '-', project: 'PRJ-2026-001', customer: 'Agni Steel Pvt Ltd' },
-  'PO-2026-005': { workCenter: 'WC-02 - Assembly', salesOrder: 'SO-2026-09-004', project: '-', customer: 'PQR Pvt Ltd' },
-  'PO-2026-006': { workCenter: 'WC-01 - Machining', salesOrder: 'SO-2026-09-005', project: '-', customer: 'Siva Textiles' },
-  'PO-2026-007': { workCenter: 'WC-04 - Heat Treatment', salesOrder: '-', project: '-', customer: 'ABC Engineering' },
-  'PO-2026-008': { workCenter: 'WC-01 - Machining', salesOrder: '-', project: '-', customer: 'XYZ Industries' },
-  'PO-2026-009': { workCenter: 'WC-02 - Assembly', salesOrder: '-', project: '-', customer: 'LMN Fabrication' },
-  'PO-2026-010': { workCenter: 'WC-03 - Welding', salesOrder: '-', project: 'PRJ-2026-001', customer: 'Agni Steel Pvt Ltd' },
-};
-
-const MATERIAL_STATUS = { issued: 8, pending: 2, notRequired: 0 };
 
 function numberFmt(n) {
   return Number(n || 0).toLocaleString('en-IN');
+}
+
+function dateFmt(d) {
+  if (!d) return '-';
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+}
+
+function toRow(order) {
+  return {
+    id: order.id,
+    no: order.orderNo,
+    code: order.productCode,
+    desc: order.productName || '-',
+    planned: Number(order.orderQty || 0),
+    produced: 0,
+    balance: Number(order.orderQty || 0),
+    start: dateFmt(order.plannedStartDate),
+    due: dateFmt(order.dueDate),
+    status: order.status,
+    bomCode: order.bom?.bomCode || '-',
+    routingCode: order.routing?.routingCode || '-',
+    salesOrder: order.baseType === 'SalesOrder' ? (order.baseNo || '-') : '-',
+    componentCount: (order.components || []).length,
+  };
 }
 
 export default function ProductionOrders() {
@@ -99,20 +92,26 @@ export default function ProductionOrders() {
   const [salesOrder, setSalesOrder] = useState('All Sales Orders');
   const [customer, setCustomer] = useState('All Customers');
   const [workCenter, setWorkCenter] = useState('All Work Centers');
-  const [priority, setPriority] = useState('All');
 
   const [search, setSearch] = useState('');
   const [checked, setChecked] = useState(() => new Set());
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [selectedOrder, setSelectedOrder] = useState('PO-2026-001');
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [panelOpen, setPanelOpen] = useState(true);
 
-  const rows = ORDERS.filter((r) => {
+  const navigate = useNavigate();
+  const notify = useNotify();
+  const { data: ordersRaw, isLoading, isError } = productionOrderApi.useList();
+  const [updateStatus, { isLoading: statusUpdating }] = useUpdateProductionOrderStatusMutation();
+  const allRows = useMemo(() => (ordersRaw || []).map(toRow), [ordersRaw]);
+
+  const rows = useMemo(() => allRows.filter((r) => {
+    if (status !== 'All' && r.status !== status) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return r.no.toLowerCase().includes(q) || r.code.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q);
-  });
+  }), [allRows, status, search]);
 
   const toggleRow = (no) => {
     setChecked((prev) => {
@@ -123,17 +122,33 @@ export default function ProductionOrders() {
     });
   };
 
-  const selected = ORDERS.find((r) => r.no === selectedOrder) || ORDERS[0];
-  const extra = ORDER_DETAILS_EXTRA[selected.no] || {};
-  const progressPct = selected.planned > 0 ? Math.round((selected.produced / selected.planned) * 100) : 0;
-  const materialPct = Math.round((MATERIAL_STATUS.issued / (MATERIAL_STATUS.issued + MATERIAL_STATUS.pending + MATERIAL_STATUS.notRequired || 1)) * 100);
+  const effectiveSelectedNo = selectedOrder || rows[0]?.no;
+  const selected = allRows.find((r) => r.no === effectiveSelectedNo) || null;
+  const progressPct = selected && selected.planned > 0 ? Math.round((selected.produced / selected.planned) * 100) : 0;
+
+  // Forward-only, one step at a time — mirrors STATUS_FLOW in
+  // routes/productionOrders.js. Release moves Planned -> Released; Close
+  // only makes sense once a run is Completed.
+  const nextStatusFor = (current) => ({ Planned: 'Released', Released: 'In Progress', 'In Progress': 'Completed', Completed: 'Closed' }[current]);
+
+  const handleAdvance = async (targetStatus) => {
+    if (!selected) return;
+    try {
+      await updateStatus({ id: selected.id, status: targetStatus }).unwrap();
+      notify.success(`Production order ${selected.no} is now ${targetStatus}`);
+    } catch (err) {
+      notify.error(err?.data?.message || 'Could not update status');
+    }
+  };
 
   const headerActions = (
     <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
-      <Button variant="contained" startIcon={<AddIcon />}>Create Production Order</Button>
-      <Button variant="outlined" startIcon={<UploadFileOutlinedIcon />}>Import from Excel</Button>
-      <Button variant="outlined" startIcon={<ContentCopyIcon />}>Copy</Button>
-      <Button variant="outlined" startIcon={<PrintOutlinedIcon />}>Print</Button>
+      <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/production-execution/create-production-order')}>
+        Create Production Order
+      </Button>
+      <Button variant="outlined" startIcon={<UploadFileOutlinedIcon />} disabled>Import from Excel</Button>
+      <Button variant="outlined" startIcon={<ContentCopyIcon />} disabled>Copy</Button>
+      <Button variant="outlined" startIcon={<PrintOutlinedIcon />} disabled>Print</Button>
     </Stack>
   );
 
@@ -225,11 +240,6 @@ export default function ProductionOrders() {
               </TextField>
             </Grid>
             <Grid item xs={12} sm={6} md={1}>
-              <TextField fullWidth size="small" select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                {PRIORITY_OPTIONS.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6} md={1}>
               <Stack direction="row" spacing={1} sx={{ height: '100%' }} alignItems="center">
                 <Button fullWidth variant="contained" color="warning" startIcon={<SearchIcon />}>Search</Button>
               </Stack>
@@ -249,7 +259,7 @@ export default function ProductionOrders() {
         >
           <Stack direction="row" alignItems="center" spacing={1.25}>
             <Typography variant="subtitle1" fontWeight={700}>Production Orders</Typography>
-            <Chip size="small" label={TOTAL_ORDER_RECORDS} color="primary" />
+            <Chip size="small" label={allRows.length} color="primary" />
           </Stack>
           <Stack direction="row" alignItems="center" spacing={1.5} flexWrap="wrap" useFlexGap>
             <TextField
@@ -280,7 +290,6 @@ export default function ProductionOrders() {
                     <TableCell rowSpan={2}>Start Date</TableCell>
                     <TableCell rowSpan={2}>Due Date</TableCell>
                     <TableCell rowSpan={2}>Status</TableCell>
-                    <TableCell rowSpan={2}>Priority</TableCell>
                     <TableCell rowSpan={2}>Action</TableCell>
                   </TableRow>
                   <TableRow>
@@ -290,9 +299,24 @@ export default function ProductionOrders() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
+                  {isLoading && (
+                    <TableRow><TableCell colSpan={12} align="center" sx={{ py: 4 }}><LoadingState label="Loading production orders..." /></TableCell></TableRow>
+                  )}
+                  {!isLoading && isError && (
+                    <TableRow><TableCell colSpan={12} align="center" sx={{ py: 4, color: 'error.main' }}>Could not load production orders.</TableCell></TableRow>
+                  )}
+                  {!isLoading && !isError && rows.length === 0 && (
+                    <TableRow><TableCell colSpan={12} sx={{ border: 0, py: 2 }}>
+                      <EmptyState
+                        title="No production orders yet"
+                        message="Create a production order to start planning and tracking manufacturing."
+                        action={<Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/production-execution/create-production-order')}>Create Production Order</Button>}
+                      />
+                    </TableCell></TableRow>
+                  )}
                   {rows.map((r, idx) => (
                     <TableRow
-                      key={r.no} hover selected={selectedOrder === r.no}
+                      key={r.no} hover selected={effectiveSelectedNo === r.no}
                       onClick={() => setSelectedOrder(r.no)}
                       sx={{ cursor: 'pointer' }}
                     >
@@ -312,10 +336,9 @@ export default function ProductionOrders() {
                         <Chip size="small" label={r.status} color={STATUS_META[r.status]?.color || 'default'} />
                       </TableCell>
                       <TableCell>
-                        <Chip size="small" label={r.priority} color={PRIORITY_META[r.priority]?.color || 'default'} variant="outlined" />
-                      </TableCell>
-                      <TableCell>
-                        <Button size="small" endIcon={<KeyboardArrowDownIcon />}>View</Button>
+                        <Button size="small" endIcon={<KeyboardArrowDownIcon />} onClick={(e) => { e.stopPropagation(); navigate(`/production-execution/view-order/${r.id}`); }}>
+                          View
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -324,7 +347,7 @@ export default function ProductionOrders() {
             </ScrollableTableContainer>
 
             <EntityListPagination
-              total={TOTAL_ORDER_RECORDS}
+              total={rows.length}
               page={page}
               onChange={setPage}
               pageSize={pageSize}
@@ -346,111 +369,90 @@ export default function ProductionOrders() {
               </Stack>
 
               <Collapse in={panelOpen}>
-                <Stack spacing={1} sx={{ mb: 2.5 }}>
-                  {[
-                    { label: 'Production Order No.', value: selected.no },
-                    { label: 'Item Code', value: selected.code },
-                    { label: 'Item Description', value: selected.desc },
-                    { label: 'Planned Qty', value: `${numberFmt(selected.planned)} Nos` },
-                    { label: 'Produced Qty', value: `${numberFmt(selected.produced)} Nos` },
-                    { label: 'Balance Qty', value: `${numberFmt(selected.balance)} Nos` },
-                    { label: 'Start Date', value: selected.start },
-                    { label: 'Due Date', value: selected.due },
-                  ].map((f) => (
-                    <Stack key={f.label} direction="row" justifyContent="space-between">
-                      <Typography variant="caption" color="text.secondary">{f.label}</Typography>
-                      <Typography variant="caption" fontWeight={600}>{f.value}</Typography>
-                    </Stack>
-                  ))}
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="caption" color="text.secondary">Status</Typography>
-                    <Chip size="small" label={selected.status} color={STATUS_META[selected.status]?.color || 'default'} />
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="caption" color="text.secondary">Priority</Typography>
-                    <Chip size="small" label={selected.priority} color={PRIORITY_META[selected.priority]?.color || 'default'} variant="outlined" />
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="caption" color="text.secondary">Work Center</Typography>
-                    <Typography variant="caption" fontWeight={600}>{extra.workCenter || '-'}</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="caption" color="text.secondary">Sales Order</Typography>
-                    <Typography variant="caption" fontWeight={600}>{extra.salesOrder || '-'}</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="caption" color="text.secondary">Project</Typography>
-                    <Typography variant="caption" fontWeight={600}>{extra.project || '-'}</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="caption" color="text.secondary">Customer</Typography>
-                    <Typography variant="caption" fontWeight={600}>{extra.customer || '-'}</Typography>
-                  </Stack>
-                </Stack>
-
-                <Divider sx={{ mb: 2 }} />
-
-                <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>Production Progress</Typography>
-                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1 }}>
-                  <LinearProgress
-                    variant="determinate" value={progressPct}
-                    sx={{ flex: 1, height: 8, borderRadius: 4 }}
-                    color="success"
-                  />
-                  <Typography variant="caption" fontWeight={700}>{progressPct}%</Typography>
-                </Stack>
-                <Stack spacing={0.5} sx={{ mb: 2.5 }}>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="caption" color="text.secondary">Planned Qty</Typography>
-                    <Typography variant="caption" fontWeight={600}>{numberFmt(selected.planned)}</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="caption" color="text.secondary">Produced Qty</Typography>
-                    <Typography variant="caption" fontWeight={600}>{numberFmt(selected.produced)}</Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="caption" color="text.secondary">Balance Qty</Typography>
-                    <Typography variant="caption" fontWeight={600}>{numberFmt(selected.balance)}</Typography>
-                  </Stack>
-                </Stack>
-
-                <Divider sx={{ mb: 2 }} />
-
-                <Typography variant="body2" fontWeight={700} sx={{ mb: 1.5 }}>Material Status (BOM)</Typography>
-                <Stack direction="row" spacing={2.5} alignItems="center" sx={{ mb: 2 }}>
-                  <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                    <CircularProgress variant="determinate" value={materialPct} size={64} thickness={5} color="success" />
-                    <Box sx={{
-                      top: 0, left: 0, bottom: 0, right: 0, position: 'absolute',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <Typography variant="caption" fontWeight={700}>{materialPct}%</Typography>
-                    </Box>
-                  </Box>
-                  <Stack spacing={0.5}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'success.main' }} />
-                      <Typography variant="caption" color="text.secondary">Issued : {MATERIAL_STATUS.issued}</Typography>
-                    </Stack>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'warning.main' }} />
-                      <Typography variant="caption" color="text.secondary">Pending : {MATERIAL_STATUS.pending}</Typography>
-                    </Stack>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'action.disabled' }} />
-                      <Typography variant="caption" color="text.secondary">Not Required : {MATERIAL_STATUS.notRequired}</Typography>
-                    </Stack>
-                  </Stack>
-                </Stack>
-
-                <Stack direction="row" spacing={2}>
-                  <Typography variant="caption" color="primary.main" fontWeight={600} sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <DescriptionOutlinedIcon sx={{ fontSize: 14 }} /> View BOM
+                {!selected ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                    No production order selected.
                   </Typography>
-                  <Typography variant="caption" color="primary.main" fontWeight={600} sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <OutboxOutlinedIcon sx={{ fontSize: 14 }} /> View Material Issue
-                  </Typography>
-                </Stack>
+                ) : (
+                  <>
+                    <Stack spacing={1} sx={{ mb: 2.5 }}>
+                      {[
+                        { label: 'Production Order No.', value: selected.no },
+                        { label: 'Item Code', value: selected.code },
+                        { label: 'Item Description', value: selected.desc },
+                        { label: 'Planned Qty', value: `${numberFmt(selected.planned)} Nos` },
+                        { label: 'Produced Qty', value: `${numberFmt(selected.produced)} Nos` },
+                        { label: 'Balance Qty', value: `${numberFmt(selected.balance)} Nos` },
+                        { label: 'Start Date', value: selected.start },
+                        { label: 'Due Date', value: selected.due },
+                      ].map((f) => (
+                        <Stack key={f.label} direction="row" justifyContent="space-between">
+                          <Typography variant="caption" color="text.secondary">{f.label}</Typography>
+                          <Typography variant="caption" fontWeight={600}>{f.value}</Typography>
+                        </Stack>
+                      ))}
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Typography variant="caption" color="text.secondary">Status</Typography>
+                        <Chip size="small" label={selected.status} color={STATUS_META[selected.status]?.color || 'default'} />
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">BOM</Typography>
+                        <Typography variant="caption" fontWeight={600}>{selected.bomCode}</Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">Routing</Typography>
+                        <Typography variant="caption" fontWeight={600}>{selected.routingCode}</Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">Sales Order</Typography>
+                        <Typography variant="caption" fontWeight={600}>{selected.salesOrder}</Typography>
+                      </Stack>
+                    </Stack>
+
+                    <Divider sx={{ mb: 2 }} />
+
+                    <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>Production Progress</Typography>
+                    <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1 }}>
+                      <LinearProgress
+                        variant="determinate" value={progressPct}
+                        sx={{ flex: 1, height: 8, borderRadius: 4 }}
+                        color="success"
+                      />
+                      <Typography variant="caption" fontWeight={700}>{progressPct}%</Typography>
+                    </Stack>
+                    <Stack spacing={0.5} sx={{ mb: 2.5 }}>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">Planned Qty</Typography>
+                        <Typography variant="caption" fontWeight={600}>{numberFmt(selected.planned)}</Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">Produced Qty</Typography>
+                        <Typography variant="caption" fontWeight={600}>{numberFmt(selected.produced)}</Typography>
+                      </Stack>
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="caption" color="text.secondary">Balance Qty</Typography>
+                        <Typography variant="caption" fontWeight={600}>{numberFmt(selected.balance)}</Typography>
+                      </Stack>
+                    </Stack>
+
+                    <Divider sx={{ mb: 2 }} />
+
+                    <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>Components</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {selected.componentCount} component{selected.componentCount === 1 ? '' : 's'} snapshotted from {selected.bomCode}. Material issue is tracked in a later phase.
+                    </Typography>
+
+                    <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                      <Typography
+                        variant="caption" color="primary.main" fontWeight={600}
+                        sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 0.5 }}
+                        onClick={() => navigate(`/production-execution/view-order/${selected.id}`)}
+                      >
+                        <DescriptionOutlinedIcon sx={{ fontSize: 14 }} /> View Order
+                      </Typography>
+                    </Stack>
+                  </>
+                )}
               </Collapse>
             </Box>
           </Grid>
@@ -459,13 +461,32 @@ export default function ProductionOrders() {
 
       {/* Bottom action bar */}
       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 2.5 }} flexWrap="wrap" useFlexGap>
-        <Button variant="outlined" startIcon={<VisibilityOutlinedIcon />}>View</Button>
-        <Button variant="outlined" startIcon={<EditOutlinedIcon />}>Edit</Button>
-        <Button variant="outlined" startIcon={<RocketLaunchOutlinedIcon />}>Release</Button>
-        <Button variant="outlined" startIcon={<CheckCircleOutlineIcon />}>Close</Button>
+        <Button
+          variant="outlined" startIcon={<VisibilityOutlinedIcon />} disabled={!selected}
+          onClick={() => selected && navigate(`/production-execution/view-order/${selected.id}`)}
+        >
+          View
+        </Button>
+        <Button variant="outlined" startIcon={<EditOutlinedIcon />} disabled={!selected || selected.status !== 'Planned'}>Edit</Button>
+        <Button
+          variant="outlined" startIcon={<RocketLaunchOutlinedIcon />}
+          disabled={!selected || !nextStatusFor(selected.status) || statusUpdating}
+          onClick={() => handleAdvance(nextStatusFor(selected.status))}
+        >
+          {selected?.status === 'Released' || selected?.status === 'In Progress' ? 'Advance' : 'Release'}
+        </Button>
+        <Button
+          variant="outlined" startIcon={<CheckCircleOutlineIcon />}
+          disabled={!selected || selected.status !== 'Completed' || statusUpdating}
+          onClick={() => handleAdvance('Closed')}
+        >
+          Close
+        </Button>
         <Box sx={{ flex: 1 }} />
-        <Button variant="outlined" startIcon={<PrintOutlinedIcon />}>Print</Button>
-        <Button variant="contained" color="warning" startIcon={<AddIcon />}>Create Production Order</Button>
+        <Button variant="outlined" startIcon={<PrintOutlinedIcon />} disabled>Print</Button>
+        <Button variant="contained" color="warning" startIcon={<AddIcon />} onClick={() => navigate('/production-execution/create-production-order')}>
+          Create Production Order
+        </Button>
       </Stack>
     </Box>
   );

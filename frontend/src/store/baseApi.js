@@ -234,6 +234,9 @@ export const baseApi = createApi({
     'EInvoiceSettings',
     // Production Planning > Forecast Plan.
     'ProductionForecastPlan',
+    // Production Planning / Execution — Phase A manufacturing foundation
+    // (Work Centers, Bill of Materials, Routing, Production Orders).
+    'WorkCenter', 'Bom', 'Routing', 'ProductionOrder',
   ],
   endpoints: () => ({}),
 });

@@ -86,6 +86,7 @@ import Build from '@mui/icons-material/Build';
 import TaskAlt from '@mui/icons-material/TaskAlt';
 import DoneAll from '@mui/icons-material/DoneAll';
 import PostAdd from '@mui/icons-material/PostAdd';
+import Timeline from '@mui/icons-material/Timeline';
 
 export const iconMap = {
   Dashboard, Business, Domain, AccountTree, DateRange, Numbers, Percent,
@@ -114,6 +115,7 @@ export const iconMap = {
   TaskAlt,
   DoneAll,
   PostAdd,
+  Timeline,
 };
 
 export function getNavIcon(name) {

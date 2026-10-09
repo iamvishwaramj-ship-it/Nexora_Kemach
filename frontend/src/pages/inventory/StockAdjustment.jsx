@@ -336,12 +336,6 @@ export default function StockAdjustment() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<Inventory2OutlinedIcon />}
-        title="Stock Adjustment"
-        subtitle={view === 'form' ? 'Create a new stock adjustment.' : 'Manage and track all stock adjustments.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <AppForm

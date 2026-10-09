@@ -712,12 +712,6 @@ export default function SalesOrder({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ShoppingCartOutlinedIcon />}
-        title="Sales Order"
-        subtitle={view === 'form' ? 'Create a new sales order.' : 'Manage and track all sales orders.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="sales" type="order" docNo={editingRow?.orderNo}>

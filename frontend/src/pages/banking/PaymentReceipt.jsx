@@ -362,12 +362,6 @@ export default function PaymentReceipt({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<AccountBalanceWalletOutlinedIcon />}
-        title="Payment Receipt (Incoming Payment)"
-        subtitle={showForm ? 'Record an incoming payment against a customer, vendor or account.' : 'Manage and track all incoming payments.'}
-        rightContent={<CompanyBadge />}
-      />
 
       <Collapse in={showForm} unmountOnExit>
       <Box sx={{ mb: 2 }}>

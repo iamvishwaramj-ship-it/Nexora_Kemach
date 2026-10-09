@@ -150,23 +150,6 @@ export default function AccountType() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<CategoryIcon />}
-        title="Account Type"
-        subtitle="Manage the account types used to classify Chart Of Accounts entries."
-        rightContent={<CompanyBadge />}
-      />
-
-      <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
-        <Button
-          variant="contained"
-          startIcon={showForm ? <CloseIcon /> : <AddIcon />}
-          onClick={handleToggleForm}
-        >
-          {showForm ? 'Close' : 'Add Account Type'}
-        </Button>
-      </Stack>
-
       <Collapse in={showForm} unmountOnExit>
         <Card variant="outlined" sx={{ mb: 2 }}>
           <CardContent sx={{ p: 3 }}>
@@ -229,6 +212,13 @@ export default function AccountType() {
               <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()} disabled={isFetching} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                 Refresh
               </Button>
+                      <Button
+          variant="contained"
+          startIcon={showForm ? <CloseIcon /> : <AddIcon />}
+          onClick={handleToggleForm}
+        >
+          {showForm ? 'Close' : 'Add Account Type'}
+        </Button>
             </Stack>
 
             <TableFilterPanel table={table} />

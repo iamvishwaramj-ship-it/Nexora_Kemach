@@ -177,12 +177,6 @@ export default function CustomerWiseSales() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<GroupsOutlinedIcon />}
-        title="Customer-wise Sales"
-        subtitle="View and analyze sales performance grouped by customers."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

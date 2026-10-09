@@ -163,13 +163,6 @@ export default function HsnMaster() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ReceiptLongOutlinedIcon />}
-        title="HSN Master"
-        subtitle="Create and manage HSN / SAC codes."
-        rightContent={<CompanyBadge />}
-      />
-
       {/* The form lives in a modal, same shape as Brand — see Brand.jsx for
           the reference this was copied from. */}
       <Dialog

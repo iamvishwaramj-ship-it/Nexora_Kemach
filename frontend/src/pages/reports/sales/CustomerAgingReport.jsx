@@ -200,12 +200,6 @@ export default function CustomerAgingReport() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<HourglassBottomOutlinedIcon />}
-        title="Customer Aging Report"
-        subtitle="Receivables aging by customer and invoice sales employee, with configurable aging buckets."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

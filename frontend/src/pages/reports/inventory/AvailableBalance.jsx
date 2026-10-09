@@ -456,12 +456,6 @@ export default function AvailableBalance() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<WarehouseOutlinedIcon />}
-        title="Available Balance"
-        subtitle="On-hand stock by item and warehouse, with reorder and overstock status."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

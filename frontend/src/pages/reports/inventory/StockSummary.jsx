@@ -250,13 +250,6 @@ export default function StockSummary() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<Inventory2OutlinedIcon />}
-        title="Stock Summary"
-        subtitle="Current on-hand stock across all warehouses."
-        rightContent={<CompanyBadge />}
-      />
-
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>
           <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>Filters</Typography>

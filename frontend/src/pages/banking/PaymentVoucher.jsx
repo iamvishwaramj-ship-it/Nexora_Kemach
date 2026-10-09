@@ -361,12 +361,6 @@ export default function PaymentVoucher({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<PaymentsOutlinedIcon />}
-        title="Payment Voucher (Outgoing Payment)"
-        subtitle={showForm ? 'Record an outgoing payment against a vendor or account.' : 'Manage and track all outgoing payments.'}
-        rightContent={<CompanyBadge />}
-      />
 
       <Collapse in={showForm} unmountOnExit>
         <Box sx={{ mb: 2 }}>

@@ -38,7 +38,7 @@ import { useNotify } from '../feedback/NotificationProvider';
 import GlobalSearch from '../navigation/GlobalSearch';
 import NexoraLogo, { AnimatedLogo } from './Nexora_Logo';
 import CompanyLogo from './CompanyLogo';
-import NavbarDate from '../common/NavbarDate';
+import NavbarCompanyBadge from '../common/NavbarCompanyBadge';
 import { SIDEBAR_WIDTH, SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_TOGGLE_OFFSET } from './Sidebar';
 
 const LANGUAGES = [
@@ -316,11 +316,11 @@ const Header = React.memo(() => {
               </IconButton>
             )}
 
-            {/* Today's date + day, immediately before the language switcher.
-            Desktop/tablet only, same visibility rule as the language cluster
-            below -- there's no room for it once the navbar drops to phone
-            width. */}
-            {!isCompact && <NavbarDate />}
+            {/* "Current Company" badge, immediately before the language
+            switcher -- takes the slot the date/day used to occupy. Desktop/
+            tablet only, same visibility rule as the language cluster below --
+            there's no room for it once the navbar drops to phone width. */}
+            {!isCompact && <NavbarCompanyBadge />}
 
             {/* Language switcher -- desktop/tablet only. Below sm it lives inside
             the profile menu instead, which is what buys the wordmark its

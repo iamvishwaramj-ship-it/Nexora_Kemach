@@ -995,12 +995,6 @@ export default function SalesInvoice({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ReceiptOutlinedIcon />}
-        title="Sales Invoice"
-        subtitle={view === 'form' ? 'Create a new sales invoice.' : 'Manage and track all sales invoices.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="sales" type="invoice" docNo={editingRow?.invoiceNo}>

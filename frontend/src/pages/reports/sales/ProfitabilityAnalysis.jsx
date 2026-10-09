@@ -189,12 +189,6 @@ export default function ProfitabilityAnalysis() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<TrendingUpOutlinedIcon />}
-        title="Profitability Analysis"
-        subtitle="Analyze profitability based on sales performance."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

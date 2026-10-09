@@ -138,6 +138,12 @@ const PATH_TO_MENU_KEY = {
   // listed in UNGOVERNED_POSTS below instead, the same way document-numbers'
   // peek endpoints are.
   '/production-planning/forecast-plans': 'production-planning-forecast',
+
+  // --- Production Planning / Execution (Phase A manufacturing foundation) --
+  '/production/work-centers': 'production-planning-work-centers',
+  '/production/boms': 'production-planning-bom',
+  '/production/routings': 'production-planning-routing',
+  '/production/orders': 'production-execution-production-orders',
 };
 
 // Prefixes sorted longest-first so the lookup below can return on first match.

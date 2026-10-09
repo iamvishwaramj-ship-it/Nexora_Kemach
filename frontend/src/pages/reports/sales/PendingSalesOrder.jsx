@@ -181,12 +181,6 @@ export default function PendingSalesOrder() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<AssignmentLateOutlinedIcon />}
-        title="Pending Sales Orders"
-        subtitle="View all sales orders that are pending for delivery or completion."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

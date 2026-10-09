@@ -155,13 +155,6 @@ export default function CurrencyMaster() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<CurrencyExchangeOutlinedIcon />}
-        title="Currency Master"
-        subtitle="Create and manage the currencies offered everywhere in the app."
-        rightContent={<CompanyBadge />}
-      />
-
       {/* The form lives in a modal, same shape as Brand — see Brand.jsx for
           the reference this was copied from. */}
       <Dialog

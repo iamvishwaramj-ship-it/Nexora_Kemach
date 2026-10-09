@@ -429,13 +429,6 @@ export default function JournalEntry() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<MenuBookOutlinedIcon />}
-        title="Journal Entry"
-        subtitle={showForm ? 'Post a manual double-entry transaction directly to the general ledger.' : 'Manage and track all manual journal entries.'}
-        rightContent={<CompanyBadge />}
-      />
-
       <Collapse in={showForm} unmountOnExit>
       <Box sx={{ mb: 2 }}>
         <AppForm readOnly={readOnly}

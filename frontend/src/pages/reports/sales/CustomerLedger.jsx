@@ -148,12 +148,6 @@ export default function CustomerLedger() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<AccountBalanceOutlinedIcon />}
-        title="Customer Ledger"
-        subtitle="Every receivable-relevant transaction for a customer, chronologically, with a running balance."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

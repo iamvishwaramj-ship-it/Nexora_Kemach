@@ -533,14 +533,6 @@ export default function PurchaseReturn({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<AssignmentReturnOutlinedIcon />}
-        title="Purchase Return"
-        subtitle={view === 'form'
-          ? 'Return received goods to a supplier against a GRN.'
-          : 'Manage goods returned to suppliers.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="purchase" type="return" docNo={editingRow?.returnNo}>

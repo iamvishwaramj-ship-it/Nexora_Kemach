@@ -192,6 +192,9 @@ export const navConfig = [
       { key: 'production-planning-generate-order-sales-order', labelKey: 'Generate Order - Sales Order', path: '/production-planning/generate-order-sales-order', icon: 'PointOfSale' },
       { key: 'production-planning-generate-order-forecast', labelKey: 'Generate Order - Forecast', path: '/production-planning/generate-order-forecast', icon: 'TrendingUp' },
       { key: 'production-planning-generate-order-project', labelKey: 'Generate Order - Project', path: '/production-planning/generate-order-project', icon: 'Engineering' },
+      { key: 'production-planning-work-centers', labelKey: 'Work Centers', path: '/production-planning/work-centers', icon: 'Build' },
+      { key: 'production-planning-bom', labelKey: 'Bill of Materials', path: '/production-planning/bom', icon: 'AccountTree' },
+      { key: 'production-planning-routing', labelKey: 'Routing', path: '/production-planning/routing', icon: 'Timeline' },
     ],
   },
   {
@@ -217,6 +220,7 @@ export const navConfig = [
       { key: 'production-execution-reports', labelKey: 'Reports', path: '/production-execution/reports', icon: 'Assessment' },
       { key: 'production-execution-notes', labelKey: 'Notes', path: '/production-execution/notes', icon: 'EditNote' },
       { key: 'production-execution-create-requisition', labelKey: 'Create Requisition', path: '/production-execution/create-requisition', icon: 'PostAdd' },
+      { key: 'production-execution-create-production-order', labelKey: 'Create Production Order', path: '/production-execution/create-production-order', icon: 'NoteAdd' },
     ],
   },
   {

@@ -763,12 +763,6 @@ export default function DeliveryChallan({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<LocalShippingOutlinedIcon />}
-        title="Delivery Challan"
-        subtitle={view === 'form' ? 'Create a new delivery challan.' : 'Manage and track all delivery challans.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="sales" type="challan" docNo={editingRow?.challanNo}>

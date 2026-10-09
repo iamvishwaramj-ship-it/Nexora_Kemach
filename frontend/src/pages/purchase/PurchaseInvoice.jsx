@@ -728,12 +728,6 @@ export default function PurchaseInvoice({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ReceiptOutlinedIcon />}
-        title="Purchase Invoice"
-        subtitle={view === 'form' ? 'Create a new purchase invoice.' : 'Manage and track all purchase invoices.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="purchase" type="invoice" docNo={editingRow?.invoiceNo}>

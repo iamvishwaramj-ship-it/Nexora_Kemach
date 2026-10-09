@@ -195,12 +195,6 @@ export default function PendingPurchaseOrder() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<AssignmentLateOutlinedIcon />}
-        title="Pending Purchase Order"
-        subtitle="Purchase orders yet to be fully received/invoiced."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

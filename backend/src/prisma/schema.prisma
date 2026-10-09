@@ -3942,3 +3942,175 @@ model ProductionForecastPlanLine {
   @@index([productCode], map: "IX_ProdForecastPlanLine_ProductCode")
   @@map("production_forecast_plan_lines")
 }
+
+// ---------------------------------------------------------------------------
+// Production Planning / Execution — Phase A manufacturing foundation (Bill of
+// Materials, Routing, Production Orders + order-time snapshots). Additive
+// only: no existing table above this point is altered. Material issue/
+// receipt, costing and GL/WIP posting are explicitly out of scope here and
+// are planned as separate, later, individually-approved phases — see
+// routes/productionOrders.js and routes/productionMasters.js for the API
+// surface built on these models.
+// ---------------------------------------------------------------------------
+
+model WorkCenter {
+  id             Int      @id @default(autoincrement())
+  workCenterCode String   @unique @map("work_center_code") @db.NVarChar(50)
+  name           String   @db.NVarChar(150)
+  branch         String?  @db.NVarChar(150)
+  capacityPerDay Decimal? @map("capacity_per_day") @db.Decimal(15, 2)
+  costPerHour    Decimal  @default(0, map: "DF_work_centers_cost_per_hour") @map("cost_per_hour") @db.Decimal(15, 2)
+  status         String   @default("N'Active'", map: "DF_work_centers_status") @db.NVarChar(20)
+
+  @@map("work_centers")
+}
+
+// Single-level BOM: productCode (the finished good) -> component lines. No
+// sub-assembly explosion in this phase (see BomLine.componentProductCode,
+// which is always a leaf Product, never another BOM). Versioned via
+// `version` + `isDefault`; a Production Order snapshots the lines it used at
+// creation time into ProductionOrderComponent, so a later edit to a BOM (or
+// deleting it entirely -- see ProductionOrder.bomId's onDelete: SetNull)
+// never retroactively changes an order already created from it.
+model BillOfMaterial {
+  id            Int               @id @default(autoincrement())
+  bomCode       String            @unique @map("bom_code") @db.NVarChar(50)
+  productCode   String            @map("product_code") @db.NVarChar(50)
+  uom           String?           @db.NVarChar(50)
+  version       String            @default("N'1.0'", map: "DF_boms_version") @db.NVarChar(20)
+  baseQuantity  Decimal           @default(1, map: "DF_boms_base_quantity") @map("base_quantity") @db.Decimal(15, 2)
+  isDefault     Boolean           @default(false, map: "DF_boms_is_default") @map("is_default")
+  status        String            @default("N'Active'", map: "DF_boms_status") @db.NVarChar(20)
+  notes         String?           @db.NVarChar(Max)
+  createdById   Int?              @map("created_by_id")
+  createdByName String?           @map("created_by_name") @db.NVarChar(100)
+  createdAt     DateTime          @default(now(), map: "DF_boms_created_at") @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  lines         BomLine[]
+  orders        ProductionOrder[]
+
+  @@index([productCode, status], map: "IX_Bom_ProductCode_Status")
+  @@map("boms")
+}
+
+model BomLine {
+  id                   Int             @id @default(autoincrement())
+  bomId                Int             @map("bom_id")
+  componentProductCode String          @map("component_product_code") @db.NVarChar(50)
+  componentProductName String?         @map("component_product_name") @db.NVarChar(150)
+  uom                  String?         @db.NVarChar(50)
+  quantityPer          Decimal         @map("quantity_per") @db.Decimal(15, 4)
+  scrapPercent         Decimal         @default(0, map: "DF_bom_lines_scrap_percent") @map("scrap_percent") @db.Decimal(5, 2)
+  sequenceNo           Int             @default(1, map: "DF_bom_lines_sequence_no") @map("sequence_no")
+  bom                  BillOfMaterial? @relation(fields: [bomId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([bomId], map: "IX_BomLine_BomId")
+  @@map("bom_lines")
+}
+
+model Routing {
+  id          Int                @id @default(autoincrement())
+  routingCode String             @unique @map("routing_code") @db.NVarChar(50)
+  productCode String             @map("product_code") @db.NVarChar(50)
+  version     String             @default("N'1.0'", map: "DF_routings_version") @db.NVarChar(20)
+  isDefault   Boolean            @default(false, map: "DF_routings_is_default") @map("is_default")
+  status      String             @default("N'Active'", map: "DF_routings_status") @db.NVarChar(20)
+  operations  RoutingOperation[]
+  orders      ProductionOrder[]
+
+  @@index([productCode, status], map: "IX_Routing_ProductCode_Status")
+  @@map("routings")
+}
+
+model RoutingOperation {
+  id               Int      @id @default(autoincrement())
+  routingId        Int      @map("routing_id")
+  operationNo      Int      @map("operation_no")
+  operationName    String   @map("operation_name") @db.NVarChar(150)
+  workCenterCode   String?  @map("work_center_code") @db.NVarChar(50)
+  standardTimeMins Decimal? @map("standard_time_mins") @db.Decimal(10, 2)
+  sequenceNo       Int      @default(1, map: "DF_routing_operations_sequence_no") @map("sequence_no")
+  routing          Routing? @relation(fields: [routingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([routingId], map: "IX_RoutingOperation_RoutingId")
+  @@map("routing_operations")
+}
+
+// baseType/baseNo/baseEntry/baseLine: cross-document reference to a source
+// Sales Order, by document number -- NOT a foreign key. Same convention
+// SalesOrderItem and Stock already use elsewhere in this schema (see
+// utils/documentFlow.js's header comment: "the linkage this schema actually
+// has -- a plain document number ... since no foreign key exists between
+// them"). Populating these fields is Phase B (MRP/Generate Order) work; the
+// columns exist from Phase A so no later migration is needed for them.
+model ProductionOrder {
+  id               Int                        @id @default(autoincrement())
+  orderNo          String                     @unique @map("order_no") @db.NVarChar(50)
+  productCode      String                     @map("product_code") @db.NVarChar(50)
+  productName      String?                    @map("product_name") @db.NVarChar(150)
+  bomId            Int?                       @map("bom_id")
+  routingId        Int?                       @map("routing_id")
+  orderQty         Decimal                    @map("order_qty") @db.Decimal(15, 2)
+  uom              String?                    @db.NVarChar(50)
+  plannedStartDate DateTime?                  @map("planned_start_date") @db.Date
+  dueDate          DateTime?                  @map("due_date") @db.Date
+  warehouse        String?                    @db.NVarChar(150)
+  branch           String?                    @db.NVarChar(150)
+  sourceType       String                     @default("N'Manual'", map: "DF_production_orders_source_type") @map("source_type") @db.NVarChar(20)
+  baseType         String?                    @map("base_type") @db.NVarChar(50)
+  baseNo           String?                    @map("base_no") @db.NVarChar(50)
+  baseEntry        Int?                       @map("base_entry")
+  baseLine         Int?                       @map("base_line")
+  status           String                     @default("N'Planned'", map: "DF_production_orders_status") @db.NVarChar(20)
+  isCancelled      Boolean                    @default(false, map: "DF_production_orders_is_cancelled") @map("is_cancelled")
+  notes            String?                    @db.NVarChar(Max)
+  createdById      Int?                       @map("created_by_id")
+  createdByName    String?                    @map("created_by_name") @db.NVarChar(100)
+  createdAt        DateTime                   @default(now(), map: "DF_production_orders_created_at") @map("created_at")
+  updatedAt        DateTime                   @updatedAt @map("updated_at")
+  bom              BillOfMaterial?            @relation(fields: [bomId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  routing          Routing?                   @relation(fields: [routingId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  components       ProductionOrderComponent[]
+  operations       ProductionOrderOperation[]
+
+  @@index([status, updatedAt], map: "IX_ProductionOrder_Status_UpdatedAt")
+  @@index([productCode], map: "IX_ProductionOrder_ProductCode")
+  @@index([baseType, baseEntry], map: "IX_ProductionOrder_Base")
+  @@map("production_orders")
+}
+
+// Snapshotted from BillOfMaterial/BomLine at order-creation time (see
+// POST /api/production/orders) -- this, not the BOM, is what Material
+// Requisition/Issue screens will read and update in a later phase.
+// issuedQty stays 0 in Phase A; nothing here posts to Stock yet.
+model ProductionOrderComponent {
+  id                   Int              @id @default(autoincrement())
+  orderId              Int              @map("order_id")
+  componentProductCode String           @map("component_product_code") @db.NVarChar(50)
+  componentProductName String?          @map("component_product_name") @db.NVarChar(150)
+  uom                  String?          @db.NVarChar(50)
+  plannedQty           Decimal          @map("planned_qty") @db.Decimal(15, 2)
+  issuedQty            Decimal          @default(0, map: "DF_production_order_components_issued_qty") @map("issued_qty") @db.Decimal(15, 2)
+  order                ProductionOrder? @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([orderId], map: "IX_ProdOrderComponent_OrderId")
+  @@map("production_order_components")
+}
+
+// Snapshotted from Routing/RoutingOperation at order-creation time.
+model ProductionOrderOperation {
+  id             Int              @id @default(autoincrement())
+  orderId        Int              @map("order_id")
+  operationNo    Int              @map("operation_no")
+  operationName  String?          @map("operation_name") @db.NVarChar(150)
+  workCenterCode String?          @map("work_center_code") @db.NVarChar(50)
+  status         String           @default("N'Pending'", map: "DF_production_order_operations_status") @db.NVarChar(20)
+  goodQty        Decimal          @default(0, map: "DF_production_order_operations_good_qty") @map("good_qty") @db.Decimal(15, 2)
+  scrapQty       Decimal          @default(0, map: "DF_production_order_operations_scrap_qty") @map("scrap_qty") @db.Decimal(15, 2)
+  startedAt      DateTime?        @map("started_at")
+  completedAt    DateTime?        @map("completed_at")
+  order          ProductionOrder? @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([orderId], map: "IX_ProdOrderOperation_OrderId")
+  @@map("production_order_operations")
+}

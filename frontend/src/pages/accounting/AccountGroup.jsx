@@ -352,22 +352,8 @@ export default function AccountGroup() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<AccountTreeOutlinedIcon />}
-        title="Account Group"
-        subtitle="Manage your accounting group hierarchy. Add, update or remove groups."
-        rightContent={<CompanyBadge />}
-      />
 
-      <Stack direction="row" justifyContent="flex-end" sx={{ mb: 2 }}>
-        <Button
-          variant="contained"
-          startIcon={showForm ? <CloseIcon /> : <AddIcon />}
-          onClick={handleToggleForm}
-        >
-          {showForm ? 'Close' : 'Add Account Group'}
-        </Button>
-      </Stack>
+ 
 
       <Collapse in={showForm} unmountOnExit>
         <Card variant="outlined" sx={{ mb: 2 }}>
@@ -453,6 +439,14 @@ export default function AccountGroup() {
               <Button variant="outlined" startIcon={<RefreshIcon />} onClick={() => refetch()} disabled={isFetching} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                 Refresh
               </Button>
+              <Button
+    variant="contained"
+    startIcon={showForm ? <CloseIcon /> : <AddIcon />}
+    onClick={handleToggleForm}
+    sx={{ width: { xs: '100%', sm: 'auto' } }}
+  >
+    {showForm ? 'Close' : 'Add Account Group'}
+  </Button>
             </Stack>
 
             <TableFilterPanel table={table} />

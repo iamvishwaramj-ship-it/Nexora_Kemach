@@ -121,6 +121,12 @@ const DOCUMENT_CATALOG = [
   // (the document that generated it) shown read-only, not drawn from this
   // series.
   { code: 'JEO', name: 'Journal Entry — Origin No', prefix: 'JEO', module: 'Accounting', scope: 'transaction' },
+  // Production Planning > Production Execution — Phase A manufacturing
+  // foundation (schema.prisma's ProductionOrder.orderNo). Per-financial-year
+  // like every other transaction document; an admin sets up its series under
+  // Company Setup > Document Numbering before the first Production Order can
+  // be created (see routes/productionOrders.js).
+  { code: 'PRO', name: 'Production Order',   prefix: 'PRO',  module: 'Production',  scope: 'transaction' },
 
   // --- Masters: one perpetual series each ----------------------------------
   // `hiddenFromNumberingUI: true` keeps these out of the Document
@@ -228,6 +234,7 @@ const TRANSACTION_TABLE_SOURCES = {
   JE: { model: 'journalEntry', field: 'journalEntryNo' },
   JEO: { model: 'journalEntry', field: 'originNo' },
   BPOB: { model: 'businessPartnerOpeningBalance', field: 'documentNumber' },
+  PRO: { model: 'productionOrder', field: 'orderNo' },
 };
 
 /** Every numberable document type's storage location, master or transaction. */

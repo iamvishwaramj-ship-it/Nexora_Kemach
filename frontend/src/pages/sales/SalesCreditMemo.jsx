@@ -606,14 +606,6 @@ export default function SalesCreditMemo({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ReceiptLongOutlinedIcon />}
-        title="Sales Credit Memo"
-        subtitle={view === 'form'
-          ? 'Record a credit issued to a customer against a sales invoice.'
-          : 'Manage credits issued to customers.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="sales" type="creditMemo" docNo={editingRow?.creditNo}>

@@ -370,15 +370,6 @@ function BusinessPartnerDocumentDialog({ open, onClose, code, type, title }) {
   );
 }
 
-// Logo — shown below Account Balance. Adapted from CompanyDetails' own
-// CompanyLogoField (see pages/company/CompanyDetails.jsx) for the identical
-// upload/preview/remove pattern, backed here by Business Partner's own
-// POST/DELETE /business-partners/:id/logo endpoints instead of /company/logo.
-// Upload/remove don't hit the server immediately on pick/click — they're
-// staged locally (logoFile / removeRequested, held in the page component so
-// they survive re-renders of this form's AppForm render-prop) and only sent
-// when the surrounding form is actually saved (see handleSubmit below), so
-// backing out of an edit with Cancel never leaves a half-applied logo change.
 const BP_LOGO_ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'];
 const BP_LOGO_MAX_BYTES = 2 * 1024 * 1024;
 
@@ -1113,23 +1104,6 @@ export default function BusinessPartner() {
   // comment.
   const [showForm, setShowForm] = useState(false);
 
-  // Phase 4 of the data-loading performance work (pure data-access, no
-  // business-logic change) — these three dropdown-lookup lists used to fire
-  // unconditionally on every mount of this page, whether or not the Add/
-  // Edit form was even open (unlike Product Master's own lookups, which
-  // were already gated).
-  //
-  // Not combined into one round-trip the way Product Master's seven
-  // lookups were: salesEmployeeApi's (`company/sales-employees`) and
-  // houseBankApi's (`company/house-banks`) routes live in routes/
-  // company.js, a file this change does not touch, so their current
-  // behaviour can't be verified/replicated from here (see the matching
-  // comment on the /products/form-lookups route in
-  // backend/src/routes/resources.js for the same reasoning). Gating alone
-  // — not firing until the form is actually open — is the safe, purely
-  // frontend fix available for all three; chartOfAccountApi's own route
-  // IS visible in resources.js, but combining just one resource into its
-  // own "combined" endpoint has no round-trip benefit on its own.
   const { data: salesEmployees } = salesEmployeeApi.useList(undefined, { skip: !showForm });
   const { data: accounts } = chartOfAccountApi.useList(undefined, { skip: !showForm });
   const { data: houseBanks } = houseBankApi.useList(undefined, { skip: !showForm });
@@ -1382,12 +1356,6 @@ export default function BusinessPartner() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ContactMailOutlinedIcon />}
-        title="Business Partner"
-        subtitle={showForm ? 'Create a new business partner.' : 'Manage customers, suppliers and leads in one place.'}
-        rightContent={<CompanyBadge />}
-      />
 
       <Collapse in={showForm} unmountOnExit>
         <Box sx={{ mb: 2 }}>

@@ -175,12 +175,6 @@ export default function PurchaseOrderRegister() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<AssignmentOutlinedIcon />}
-        title="Purchase Order Register"
-        subtitle="All purchase orders raised in the selected period."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

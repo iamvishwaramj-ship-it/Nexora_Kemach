@@ -83,6 +83,14 @@ app.use('/api/notifications', require('./routes/notifications'));
 // CRUD shape. See routes/productionPlanning.js and
 // services/forecastPlanService.js.
 app.use('/api/production-planning', require('./routes/productionPlanning'));
+// Production Planning > Work Centers / Bill of Materials / Routing — Phase A
+// manufacturing foundation masters. See routes/productionMasters.js.
+app.use('/api/production', require('./routes/productionMasters'));
+// Production Execution > Production Orders — Phase A manufacturing
+// foundation (create + snapshot BOM/Routing, status transitions, cancel).
+// Bespoke compute-on-write shape, not the generic CRUD router — see
+// routes/productionOrders.js.
+app.use('/api/production', require('./routes/productionOrders'));
 // Every other resource (products, customers, suppliers, purchase, sales,
 // inventory, receivables, payables, banking) shares the generic CRUD shape
 // and is mounted in one place — see routes/resources.js.

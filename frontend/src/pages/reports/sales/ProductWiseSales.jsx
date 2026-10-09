@@ -183,12 +183,6 @@ export default function ProductWiseSales() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<Inventory2OutlinedIcon />}
-        title="Product-wise Sales"
-        subtitle="View and analyze sales performance grouped by products."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

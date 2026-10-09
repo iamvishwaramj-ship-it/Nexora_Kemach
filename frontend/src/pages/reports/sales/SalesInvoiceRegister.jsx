@@ -183,12 +183,6 @@ export default function SalesInvoiceRegister() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ListAltOutlinedIcon />}
-        title="Sales Invoice Register"
-        subtitle="View and manage all sales invoices."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

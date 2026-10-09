@@ -186,12 +186,6 @@ export default function PriceComparison() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<CompareArrowsOutlinedIcon />}
-        title="Price Comparison"
-        subtitle="Compare supplier quoted prices for the same product."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

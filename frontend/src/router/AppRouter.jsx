@@ -154,6 +154,12 @@ const GenerateOrderSalesOrder = lazy(() => import('../pages/productionPlanning/G
 const GenerateOrderForecast = lazy(() => import('../pages/productionPlanning/GenerateOrderForecast'));
 const GenerateOrderProject = lazy(() => import('../pages/productionPlanning/GenerateOrderProject'));
 const GeneratedOrders = lazy(() => import('../pages/productionPlanning/GeneratedOrders'));
+// Phase A manufacturing foundation (real backend: Work Centers, BOM, Routing,
+// Production Orders) — see routes/productionMasters.js / productionOrders.js.
+const WorkCenters = lazy(() => import('../pages/productionPlanning/WorkCenters'));
+const BillOfMaterials = lazy(() => import('../pages/productionPlanning/BillOfMaterials'));
+const Routings = lazy(() => import('../pages/productionPlanning/Routings'));
+const PECreateProductionOrder = lazy(() => import('../pages/productionPlanning/productionExecution/CreateProductionOrder'));
 const PEProductionOrders = lazy(() => import('../pages/productionPlanning/productionExecution/ProductionOrders'));
 const PEViewOrder = lazy(() => import('../pages/productionPlanning/productionExecution/ViewOrder'));
 const PEOperations = lazy(() => import('../pages/productionPlanning/productionExecution/Operations'));
@@ -356,21 +362,27 @@ export default function AppRouter() {
             <Route path="order-generation-option" element={<OrderGenerationOption />} />
             <Route path="preview-order" element={<PreviewOrder />} />
             {/* "Generate Order" (plain) is the sidebar entry point for the whole
-                generation flow; it renders the same method-selection hub as
-                "Generate Order - MRP" (MRP is the default/active method there). */}
-            <Route path="generate-order" element={<GenerateOrderMrp />} />
+                generation flow; it renders the Generated Orders results screen
+                (list of Production/Purchase/Subcontracting/Job Work orders
+                produced by a Generate Order run), matching the reference design. */}
+            <Route path="generate-order" element={<GeneratedOrders />} />
             <Route path="generate-order-manual" element={<GenerateOrderManual />} />
             <Route path="generate-order-sales-order" element={<GenerateOrderSalesOrder />} />
             <Route path="generate-order-forecast" element={<GenerateOrderForecast />} />
             <Route path="generate-order-project" element={<GenerateOrderProject />} />
             <Route path="generated-orders" element={<GeneratedOrders />} />
+            <Route path="work-centers" element={<WorkCenters />} />
+            <Route path="bom" element={<BillOfMaterials />} />
+            <Route path="routing" element={<Routings />} />
           </Route>
 
           {/* Production Execution (own top-level menu, sibling to Production Planning) */}
           <Route path="production-execution">
             <Route index element={<SubMenuIndexPage navKey="production-execution" />} />
             <Route path="production-orders" element={<PEProductionOrders />} />
+            <Route path="create-production-order" element={<PECreateProductionOrder />} />
             <Route path="view-order" element={<PEViewOrder />} />
+            <Route path="view-order/:id" element={<PEViewOrder />} />
             <Route path="operations" element={<PEOperations />} />
             <Route path="production-execution-status" element={<PEProductionExecutionStatus />} />
             <Route path="material-requisition" element={<PEMaterialRequisition />} />

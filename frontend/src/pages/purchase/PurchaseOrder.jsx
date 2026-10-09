@@ -128,30 +128,12 @@ function getEmptyValues(preparedBy, defaultTaxCode) {
     inspection: '', warranty: '', remarks: '', bankAccount: '',
     purchaseEmployee: '',
     preparedBy: preparedBy || '', checkedBy: '', approvedBy: '',
-    // Freight Charges — see FreightChargesEditor. freightGrossAmount is kept
-    // in sync live by that component. Road Tax Amount has been removed from
-    // this document's UI/print and no longer feeds the grand total.
     freightTransportId: null, freightName: '', freightRemarks: '', freightTaxCodeId: null,
     freightTaxAmount: 0, freightNetAmount: 0, freightGrossAmount: 0,
     items: [withDefaultTaxCode({ ...emptyItem }, defaultTaxCode)],
   };
 }
 
-// Totals come from the shared engine in lib/documentTotals.js, which the
-// backend mirrors exactly — the figures shown here while editing are the
-// figures that get saved. Each page used to carry its own copy of this
-// arithmetic and the copies had drifted apart; this document in particular
-// used to hard-code CGST and SGST at 9% each regardless of what the goods
-// actually attract.
-//
-// `grandTotal` and `discount` are kept in the returned shape because the
-// totals panel below reads those names.
-// `interState` must be passed through rather than defaulted: the server
-// decides CGST/SGST vs IGST by comparing this document's Place of Supply
-// against the company's registered state, and for a long time no page passed
-// the flag at all — so an inter-state document displayed a CGST/SGST split
-// while the record it saved held IGST.
-//
 function computeTotals(items, discountPercent, interState = false, extraCharges = {}) {
   const { totals } = buildDocument(items, discountPercent, {
     interState,
@@ -259,10 +241,6 @@ export default function PurchaseOrder({ openDocNo } = {}) {
   // showing empty — see pickDefaultTaxCode's own doc comment.
   const defaultTaxCode = useMemo(() => pickDefaultTaxCode(taxCodes), [taxCodes]);
   const { data: salesEmployees } = salesEmployeeApi.useList();
-  // Tax (%) is now a Tax Code CFL: every active Tax Code master entry gets
-  // its own option (never collapsed by rate — see buildTaxCodeOptions),
-  // keyed by taxCodeId (not the rate), so two Tax Codes that happen to
-  // share a rate both still show up in the dropdown.
   const taxCodeOptions = useMemo(() => buildTaxCodeOptions(taxCodes), [taxCodes]);
   const taxCodeById = useMemo(() => new Map(taxCodeOptions.map((o) => [o.value, o])), [taxCodeOptions]);
   const { data: company } = useGetCompanyDetailsQuery();
@@ -592,12 +570,6 @@ export default function PurchaseOrder({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ShoppingBagOutlinedIcon />}
-        title="Purchase Order"
-        subtitle={view === 'form' ? 'Create a new purchase order.' : 'Manage and track all purchase orders.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="purchase" type="order" docNo={editingRow?.poNo}>
@@ -711,51 +683,20 @@ export default function PurchaseOrder({ openDocNo } = {}) {
               const today = dayjs();
               const endDateMinDate = poDateForMin && poDateForMin.isAfter(today, 'day') ? poDateForMin : today;
               const discountPercent = watch('discountPercent');
-              // Inter-state supplies are taxed wholly as IGST. The server works
-              // this out by comparing State — supplierState, auto-filled from
-              // the selected SUPPLIER's own Business Partner Billing address
-              // (see the supplierState effect below), NOT Place of Supply
-              // (which is auto-filled from the BRANCH and stays on the form
-              // for printing/saving only) — against the company's registered
-              // state; passing the same flag here is what stops the panel
-              // showing a CGST/SGST split for a record saved as IGST. A
-              // purchase's GST/IGST split depends on where the supplier is
-              // registered, not which branch raised the order.
               const interState = isInterState(watch('supplierState'), company?.state);
-              // taxType (from each line's own taxCodeId) drives the TCS
-              // carve-out in documentTotals.js's computeTotals -- see
-              // buildTaxCodeOptions/taxCodeById above, which now carries
-              // taxType alongside label/value/rate.
+
               const itemsForTotals = watchedItems.map((it) => ({ ...it, taxType: taxCodeById.get(it.taxCodeId)?.taxType || '' }));
               const freightNetAmount = watch('freightNetAmount');
               const freightTaxAmount = watch('freightTaxAmount');
               const totals = computeTotals(itemsForTotals, discountPercent, interState, { freightNetAmount, freightTaxAmount });
-              // Supplier State matching the company's own state -> GST family
-              // (GST, GST+TCS) only; any other state -> IGST family (IGST,
-              // IGST+TCS) only. See taxTypeFamilyFor in lib/taxCodeOptions.js.
               const taxCodeOptionsForRow = useMemo(
                 () => buildTaxCodeOptions(taxCodes, { taxType: taxTypeFamilyFor(interState) }),
                 [taxCodes, interState]
               );
-              // Default Tax Code for a row added via "Add Item" once the
-              // supplier (and so State) is known — GST@18% intra-state,
-              // IGST@18% inter-state, following the same family the dropdown
-              // itself is filtered to. The plain top-level defaultTaxCode
-              // (GST@18%) is still what seeds getEmptyValues' very first row,
-              // since no supplier is chosen yet at that point.
               const liveDefaultTaxCode = useMemo(
                 () => pickDefaultTaxCode(taxCodes, { taxType: taxTypeFamilyFor(interState) }),
                 [taxCodes, interState]
               );
-              // A Tax Code left over from before State (supplierState)
-              // flipped intra <-> inter-state (e.g. an IGST code still
-              // selected on a line, then the user switches to a supplier
-              // registered in the same state as the company) is no longer
-              // one of the options above. Skipped on first render — same
-              // prevRef pattern as PurchaseInvoice.jsx's own guard — so
-              // loading an existing, already-consistent order for edit/view
-              // never clears its rows; it only resets a row picked before
-              // the user's own supplier change made it invalid.
               const prevInterStateRef = useRef(interState);
               useEffect(() => {
                 if (prevInterStateRef.current === interState) return;
@@ -763,29 +704,12 @@ export default function PurchaseOrder({ openDocNo } = {}) {
                 const validTaxCodeIds = new Set(taxCodeOptionsForRow.map((o) => o.value));
                 watchedItems.forEach((item, idx) => {
                   if (item?.taxCodeId != null && !validTaxCodeIds.has(Number(item.taxCodeId))) {
-                    // Re-default to the OTHER family's plain rate (GST<->IGST)
-                    // rather than clearing the field blank — the supplier's
-                    // State changing is what invalidated the old code in the
-                    // first place, so the row should follow it to the new
-                    // family's own default, same as a brand-new row would.
                     setValue(`items.${idx}.taxCodeId`, liveDefaultTaxCode ? liveDefaultTaxCode.id : null, { shouldValidate: true });
                     setValue(`items.${idx}.taxPercent`, liveDefaultTaxCode ? liveDefaultTaxCode.rate : null, { shouldValidate: true });
                   }
                 });
                 // eslint-disable-next-line react-hooks/exhaustive-deps
               }, [interState, taxCodeOptionsForRow, liveDefaultTaxCode]);
-
-              // Belt-and-braces for a brand-new order opened before the Tax
-              // Code master had finished loading: getEmptyValues' own default
-              // (defaultTaxCode, computed from taxCodes at the moment this
-              // page first mounted) can resolve to nothing if that fetch was
-              // still in flight, leaving the first row's Tax (%) genuinely
-              // blank with no invalid code for the effect above to catch and
-              // replace. This backfills it the moment Tax Codes (and so
-              // liveDefaultTaxCode) become available — once only, and only
-              // for a genuinely new document, so it never touches a row the
-              // user (or Copy From/Smart Add/Import) deliberately left blank
-              // afterwards.
               const backfilledDefaultTaxCode = useRef(false);
               useEffect(() => {
                 if (editingRow || backfilledDefaultTaxCode.current || !liveDefaultTaxCode) return;
@@ -801,49 +725,15 @@ export default function PurchaseOrder({ openDocNo } = {}) {
 
               const allValues = watch();
               const printSupplierRecord = (suppliers || []).find((s) => s.supplierName === allValues.supplier);
-              // Print's Shipping Address box mirrors the actual "Branch *" field
-              // (allValues.branch) — the branch the PO is raised for/from,
-              // whose own address the delivery box is meant to show. It used
-              // to match against allValues.shipTo, which is a free-text
-              // supplier shipping address (set from the Business Partner's
-              // own Addresses tab, see the supplier-effect below) and never
-              // equals a branch name — so the print always fell back to the
-              // company's own default address. allValues.buyingBranch was a
-              // second, entirely dead attempt at the same fix: no form field
-              // ever writes it (PurchaseOtherDetailsCard doesn't expose one),
-              // and PurchaseOrderPrintable never even accepted a
-              // buyingBranchRecord prop, so it was silently ignored either
-              // way. Removed rather than kept for "future use".
               const printBranchRecord = (branches || []).find((b) => b.branchName === allValues.branch);
               const printHouseBankRecord = (houseBanks || []).find((b) => `${b.bankName} - ${b.accountNumber}` === allValues.bankAccount);
-              // Resolved only when "ship to a different customer" was
-              // actually used (allValues.shipToCustomer set) -- lets the
-              // printable show THAT customer's own GST No/Type on the
-              // Shipping Address block instead of always printing the
-              // branch's/company's GST, which is wrong once the order is
-              // genuinely being shipped to someone else's registered
-              // address. shipToCustomers is the same list the "Ship to a
-              // different customer" picker itself is built from, above.
+
               const printShipToCustomerRecord = allValues.shipToCustomer
                 ? (shipToCustomers || []).find((c) => c.customerName === allValues.shipToCustomer)
                 : null;
-              // items: itemsForTotals, not allValues.items — same fix
-              // SalesInvoice.jsx's own printOrder already applies. A form
-              // item row only ever carries taxCodeId, never the resolved
-              // taxType ('GST'/'IGST'/'GST+TCS'/'IGST+TCS') itself;
-              // itemsForTotals above is what joins the two (for the live
-              // totals panel) and is the only place in this component that
-              // has it. Passing allValues.items straight through left every
-              // print item's taxType undefined, so
-              // PurchaseOrderPrintable's isTcsTaxType(it.taxType) check
-              // could never see a TCS-typed line no matter what Tax Code it
-              // used.
+
               const printOrder = { ...allValues, items: itemsForTotals, status: editingRow?.status || 'Open' };
-              // Signature shown on the printable is the approver's own
-              // uploaded signature (SalesEmployee.signatureUrl), not a fixed
-              // stationery stamp -- blank when the approver has none on file.
-              // Same convention as SalesQuotation.jsx/SalesOrder.jsx/
-              // SalesInvoice.jsx's own approverSignatureUrl.
+
               const approverSignatureUrl = (salesEmployees || []).find((s) => s.employeeName === allValues.approvedBy)?.signatureUrl || null;
 
               const supplierValue = watch('supplier');
@@ -851,17 +741,7 @@ export default function PurchaseOrder({ openDocNo } = {}) {
                 () => (suppliers || []).find((s) => s.supplierName === supplierValue),
                 [suppliers, supplierValue]
               );
-              // Ship From still comes from the selected supplier's own
-              // Business Partner record — its Addresses tab, Billing
-              // Address (goods ship from the supplier's own registered
-              // address). Ship To no longer does: it now defaults from the
-              // selected BRANCH's own address instead (branchShipTo below,
-              // by the "branch" const further down) — see that effect.
-              //
-              // Like Ship To, Ship From is a free-text box the user may
-              // edit by hand, auto-filled from the supplier's default
-              // Billing address whenever the selected supplier changes —
-              // see supplierShipFrom/lastAutoShipFromRef below.
+
               const prevSupplier = useRef(editingRow ? editingRow.supplier : null);
               useEffect(() => {
                 if (supplierValue !== prevSupplier.current) {
@@ -875,20 +755,12 @@ export default function PurchaseOrder({ openDocNo } = {}) {
                 }
                 // eslint-disable-next-line react-hooks/exhaustive-deps
               }, [supplierValue]);
-
-              // Supplier's default (or only) Billing address, formatted the
-              // same way branchShipTo formats the branch's address for Ship
-              // To — the source Ship From auto-fills from whenever the
-              // selected supplier changes.
               const supplierShipFrom = useMemo(() => {
                 const billing = (supplierRecord?.addresses || []).filter((a) => a.addressType === 'Billing');
                 const defaultBilling = billing.find((a) => a.isDefault) || billing[0];
                 return formatBusinessPartnerAddress(defaultBilling) || '';
               }, [supplierRecord]);
-              // lastAutoShipFromRef mirrors lastAutoShipToRef: a supplier
-              // switch only re-fills a field that still holds our own
-              // previous auto-fill (or is empty) — a value the user typed
-              // themselves is left alone.
+
               const lastAutoShipFromRef = useRef(editingRow ? null : '');
               useEffect(() => {
                 if (editingRow) return;
@@ -903,15 +775,7 @@ export default function PurchaseOrder({ openDocNo } = {}) {
                 // eslint-disable-next-line react-hooks/exhaustive-deps
               }, [supplierShipFrom]);
 
-              // State — display-only, auto-filled from the same supplier
-              // Billing address supplierShipFrom above reads, but never
-              // hand-typed (there is no free-text box for it, just a
-              // disabled field), so unlike shipFrom it needs no "don't
-              // clobber a value the user typed" ref-tracking: a supplier
-              // change simply overwrites it every time, and it fills in
-              // immediately for an existing record too. Independent of
-              // placeOfSupply, which tracks the BRANCH's state instead (see
-              // the branch effect below).
+
               const supplierState = useMemo(() => {
                 const billing = (supplierRecord?.addresses || []).filter((a) => a.addressType === 'Billing');
                 const defaultBilling = billing.find((a) => a.isDefault) || billing[0];
@@ -922,44 +786,14 @@ export default function PurchaseOrder({ openDocNo } = {}) {
                 // eslint-disable-next-line react-hooks/exhaustive-deps
               }, [supplierState]);
 
-              // Copy From pulls every other field across from the chosen
-              // quotation onto the PO — supplier, contact info, currency,
-              // payment terms, delivery/valid-upto dates, ship to, terms &
-              // conditions, discount and items — so PO No. and PO Date are the
-              // only fields the user has to fill in themselves on a converted
-              // quotation. Everything stays editable afterwards: a PO commonly
-              // differs from the quotation it came from (revised qty, a
-              // negotiated rate), and the quotation is a starting point, not a
-              // contract the PO must match.
-              //
-              // This used to run as an effect watching the Reference (Quotation
-              // No.) dropdown. It is a plain function now, called only from the
-              // dialog's Choose button: an effect keyed on a form value also
-              // fires when the value is restored on edit or reset, which is why
-              // it needed the prevReference bookkeeping to tell "user picked a
-              // quotation" apart from "form loaded". An explicit call has no
-              // such ambiguity.
               const applyQuotation = (found) => {
                 if (found) {
-                  // The real link back to the quotation, in its own field.
-                  // referenceNo below still shows the number for the user to
-                  // read, but it is a free-text box they may overwrite for any
-                  // reason — so the quotation's status (Open until ordered
-                  // against) can't be driven from it. quotationNo is what the
-                  // server reads; see recomputePurchaseQuotationStatus.
+
                   setValue('quotationNo', found.quotationNo || '', { shouldValidate: true });
                   setValue('referenceNo', found.quotationNo || '', { shouldValidate: true });
                   setValue('supplier', found.supplier || '', { shouldValidate: true });
                   setValue('branch', found.branch || '', { shouldValidate: true });
-                  // Also sync the supplier-effect's own "previous value" ref
-                  // so it doesn't think the user just picked a new supplier
-                  // and re-fire on the next render — that effect looks up
-                  // Contact Person/Phone/Email fresh from Supplier Master,
-                  // which is frequently blank there, and was overwriting the
-                  // values just set from the quotation's snapshot below with
-                  // '' immediately after (why Contact Person appeared to
-                  // never "fetch": it was set correctly, then wiped a beat
-                  // later by the other effect).
+
                   prevSupplier.current = found.supplier || '';
                   setValue('contactPerson', found.contactPerson || '', { shouldValidate: true });
                   setValue('phone', found.phone || '', { shouldValidate: true });
@@ -1145,24 +979,12 @@ export default function PurchaseOrder({ openDocNo } = {}) {
                 currentValue: watchedItems.map((i) => i.warehouse),
               });
 
-              // Place of Supply no longer has a visible field on this form
-              // (see "Other Details" below) but the server still needs it —
-              // resolveTaxTreatment compares it against the company's
-              // registered state to decide CGST/SGST vs IGST, and the totals
-              // panel below does the same via isInterState. It is now derived
-              // automatically from the selected Branch's own state (Branch
-              // Master carries one), so switching branches keeps the tax
-              // split correct without the user typing anything.
               useEffect(() => {
                 const branchRecord = (branches || []).find((b) => b.branchName === branch);
                 setValue('placeOfSupply', branchRecord?.state || '', { shouldValidate: true });
                 // eslint-disable-next-line react-hooks/exhaustive-deps
               }, [branch, branches]);
 
-              // Switching Branch invalidates a Warehouse choice that doesn't
-              // belong to the new branch. Skipped on the very first render so
-              // loading an existing record for edit/view doesn't wipe a value
-              // it just loaded.
               const prevBranchRef = useRef(branch);
               useEffect(() => {
                 if (prevBranchRef.current === branch) return;
@@ -1184,12 +1006,6 @@ export default function PurchaseOrder({ openDocNo } = {}) {
               }, [pendingCopyIntent]);
 
               return (
-                // minWidth: 0 is required — fieldsets default to min-width: min-content,
-                // which lets the wide item table blow out the page width on mobile.
-                // The Back to List / Cancel buttons are kept outside the fieldset(s)
-                // so they stay clickable in read-only (view) mode -- a native
-                // <fieldset disabled> disables every descendant control, buttons
-                // included.
                 <>
                   <CopyFromDocumentDialog
                     open={copyFromOpen}
@@ -1222,20 +1038,6 @@ export default function PurchaseOrder({ openDocNo } = {}) {
                       </Stack>
 
                       <fieldset disabled={readOnly} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, width: '100%', display: 'block' }}>
-                        {/* Two equal-length columns: Branch/Supplier/Delivery
-                        Date/Ship From on the left, PO No./PO Date/Delivery
-                        Date/Ship To on the right — listed left-item,
-                        right-item per row so the 2-column grid lays them out
-                        as two even stacks (left: Branch, Supplier, Supplier
-                        Name, Ship From; right: PO No., PO Date, Delivery
-                        Date, Ship To) rather than flowing row-major top to
-                        bottom. Reference (Quotation No.), Contact Person,
-                        Email, Phone No., Payment Terms and Currency no
-                        longer have a visible field here; Currency still
-                        defaults to INR and Contact Person/Email/Phone still
-                        auto-fill from Supplier Master under the hood (see
-                        the supplier effect below) so nothing downstream that
-                        reads them breaks. */}
                         <FormGrid columns={2} rowSpacing={FIELD_ROW_SPACING} columnSpacing={FIELD_COLUMN_SPACING} singleColumnOnMobile>
                           <LabeledField label="Branch *">
                             <FormSelect name="branch" label="" placeholder="Select branch" options={branchOptions} />

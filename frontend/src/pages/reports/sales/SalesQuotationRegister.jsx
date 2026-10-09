@@ -178,12 +178,7 @@ export default function SalesQuotationRegister() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ListAltOutlinedIcon />}
-        title="Sales Quotation Register"
-        subtitle="View and manage all sales quotations."
-        rightContent={<CompanyBadge />}
-      />
+
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>

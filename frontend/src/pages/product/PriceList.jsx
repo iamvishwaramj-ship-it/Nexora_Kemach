@@ -263,12 +263,7 @@ export default function PriceList() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<FormatListBulletedOutlinedIcon />}
-        title="Price List"
-        subtitle={view === 'form' ? 'Build a named, dated item price list.' : 'Build and maintain named, dated item price lists.'}
-        rightContent={<CompanyBadge />}
-      />
+
 
       {view === 'form' ? (
         <AppForm

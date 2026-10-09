@@ -724,12 +724,6 @@ export default function SalesQuotation({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<RequestQuoteOutlinedIcon />}
-        title="Sales Quotation"
-        subtitle={view === 'form' ? 'Create a new sales quotation.' : 'Manage and track all sales quotations.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="sales" type="quotation" docNo={editingRow?.quotationNo}>

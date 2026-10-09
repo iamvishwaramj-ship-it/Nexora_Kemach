@@ -554,14 +554,6 @@ export default function PurchaseCreditMemo({ openDocNo } = {}) {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<ReceiptLongOutlinedIcon />}
-        title="Purchase Credit Memo"
-        subtitle={view === 'form'
-          ? 'Record a credit received from a supplier against a purchase invoice.'
-          : 'Manage credits received from suppliers.'}
-        rightContent={<CompanyBadge />}
-      />
 
       {view === 'form' ? (
         <RouteMapContextMenu flow="purchase" type="creditMemo" docNo={editingRow?.creditNo}>

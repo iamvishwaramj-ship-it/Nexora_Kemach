@@ -655,13 +655,7 @@ export default function ChartOfAccounts() {
       {/* compact: this page needs the vertical space for the drawer cabinet
           directly below. Only this page opts in — every other page's header
           is unchanged. */}
-      <EntityHeaderCard
-        compact
-        icon={<MenuBookOutlinedIcon />}
-        title="Chart Of Accounts"
-        subtitle="Create and manage the ledger account hierarchy used across the books."
-        rightContent={<CompanyBadge compact />}
-      />
+
 
       {/* Account Groups — a horizontal cabinet of drawer faces, sitting
           directly under the page header and sharing its row with New Account.

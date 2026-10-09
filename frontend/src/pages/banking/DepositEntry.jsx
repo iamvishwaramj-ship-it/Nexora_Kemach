@@ -210,12 +210,6 @@ export default function DepositEntry() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<CurrencyRupeeOutlinedIcon />}
-        title="Deposit Entry"
-        subtitle={showForm ? 'Record cash or bank deposits.' : 'Manage and track all deposits.'}
-        rightContent={<CompanyBadge />}
-      />
 
       <Collapse in={showForm} unmountOnExit>
         <Box sx={{ mb: 2 }}>

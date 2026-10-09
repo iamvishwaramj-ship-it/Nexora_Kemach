@@ -201,12 +201,6 @@ export default function PurchasePriceHistory() {
 
   return (
     <Box>
-      <EntityHeaderCard
-        icon={<HistoryOutlinedIcon />}
-        title="Purchase Price History"
-        subtitle="Historical purchase price trend by product/supplier."
-        rightContent={<CompanyBadge />}
-      />
 
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>
