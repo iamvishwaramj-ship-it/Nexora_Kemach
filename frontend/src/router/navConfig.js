@@ -214,13 +214,76 @@ export const navConfig = [
       { key: 'production-execution-record-production', labelKey: 'Record Production', path: '/production-execution/record-production', icon: 'PlaylistAddCheck' },
       { key: 'production-execution-production-history', labelKey: 'Production History', path: '/production-execution/production-history', icon: 'History' },
       { key: 'production-execution-product-cost', labelKey: 'Product Cost', path: '/production-execution/product-cost', icon: 'PriceCheck' },
-      { key: 'production-execution-rework-scrap', labelKey: 'Rework & Scrap', path: '/production-execution/rework-scrap', icon: 'Replay' },
+      { key: 'production-execution-rework-scrap', labelKey: 'Rework & Scrap', path: '/production-execution/rework-scrap', icon: 'Recycling' },
       { key: 'production-execution-production-completion', labelKey: 'Production Completion', path: '/production-execution/production-completion', icon: 'TaskAlt' },
       { key: 'production-execution-production-closure', labelKey: 'Production Closure', path: '/production-execution/production-closure', icon: 'DoneAll' },
       { key: 'production-execution-reports', labelKey: 'Reports', path: '/production-execution/reports', icon: 'Assessment' },
       { key: 'production-execution-notes', labelKey: 'Notes', path: '/production-execution/notes', icon: 'EditNote' },
       { key: 'production-execution-create-requisition', labelKey: 'Create Requisition', path: '/production-execution/create-requisition', icon: 'PostAdd' },
       { key: 'production-execution-create-production-order', labelKey: 'Create Production Order', path: '/production-execution/create-production-order', icon: 'NoteAdd' },
+      { key: 'production-execution-create-rework-entry', labelKey: 'Create Rework Entry', path: '/production-execution/create-rework-entry', icon: 'NoteAdd' },
+      { key: 'production-execution-production-order-report', labelKey: 'Production Order Report', path: '/production-execution/production-order-report', icon: 'ListAlt' },
+      { key: 'production-execution-material-consumption-report', labelKey: 'Material Consumption Report', path: '/production-execution/material-consumption-report', icon: 'ListAlt' },
+      { key: 'production-execution-material-issue-report', labelKey: 'Material Issue Report', path: '/production-execution/material-issue-report', icon: 'ListAlt' },
+      { key: 'production-execution-rework-scrap-report', labelKey: 'Rework & Scrap Report', path: '/production-execution/rework-scrap-report', icon: 'ListAlt' },
+      { key: 'production-execution-production-closer-report', labelKey: 'Production Closer Report', path: '/production-execution/production-closer-report', icon: 'ListAlt' },
+      { key: 'production-execution-work-center-performance', labelKey: 'Work Center Performance', path: '/production-execution/work-center-performance', icon: 'ListAlt' },
+      { key: 'production-execution-operator-productivity', labelKey: 'Operator Productivity', path: '/production-execution/operator-productivity', icon: 'ListAlt' },
+      { key: 'production-execution-costing-report', labelKey: 'Costing Report', path: '/production-execution/costing-report', icon: 'ListAlt' },
+    ],
+  },
+  // Subcontracting -- its own top-level menu, sibling to Production
+  // Execution (the user clarified this should be a standalone menu, not a
+  // sub-menu nested inside Production Execution). No reference screenshots
+  // were supplied for this request (unlike every other Production
+  // Execution screen built earlier), so these screens were designed from
+  // scratch -- see the header comment in each file under
+  // pages/subcontracting/.
+  {
+    key: 'subcontracting',
+    labelKey: 'Subcontracting',
+    path: '/subcontracting',
+    icon: 'Factory',
+    children: [
+      { key: 'subcontracting-dashboard', labelKey: 'Dashboard', path: '/subcontracting/dashboard', icon: 'Dashboard' },
+      { key: 'subcontracting-subcontract-orders', labelKey: 'Subcontract Orders', path: '/subcontracting/subcontract-orders', icon: 'Assignment' },
+      { key: 'subcontracting-new-subcontracting-order', labelKey: 'New Subcontracting Order', path: '/subcontracting/new-subcontracting-order', icon: 'NoteAdd' },
+      { key: 'subcontracting-material-issue-to-subcon', labelKey: 'Material Issue to Subcon', path: '/subcontracting/material-issue-to-subcon', icon: 'Outbox' },
+      { key: 'subcontracting-new-issue', labelKey: 'New Issue', path: '/subcontracting/new-issue', icon: 'NoteAdd' },
+      { key: 'subcontracting-subcontract-inward', labelKey: 'Subcontract Inward', path: '/subcontracting/subcontract-inward', icon: 'MoveToInbox' },
+      { key: 'subcontracting-new-inward', labelKey: 'New Inward', path: '/subcontracting/new-inward', icon: 'NoteAdd' },
+      { key: 'subcontracting-quality-inspection', labelKey: 'Quality Inspection', path: '/subcontracting/quality-inspection', icon: 'Rule' },
+      { key: 'subcontracting-new-inspection', labelKey: 'New Inspection', path: '/subcontracting/new-inspection', icon: 'NoteAdd' },
+      { key: 'subcontracting-subcontract-bills', labelKey: 'Subcontract Bills', path: '/subcontracting/subcontract-bills', icon: 'ReceiptLong' },
+      { key: 'subcontracting-new-bill', labelKey: 'New Bill', path: '/subcontracting/new-bill', icon: 'NoteAdd' },
+      { key: 'subcontracting-reports', labelKey: 'Reports', path: '/subcontracting/reports', icon: 'Assessment' },
+    ],
+  },
+  // Quality -- its own top-level menu, sibling to Subcontracting (placed
+  // right after it, matching the user's requested sidebar position). No
+  // reference screenshots were supplied for this request, so these screens
+  // were designed from scratch -- see the header comment in each file under
+  // pages/quality/.
+  {
+    key: 'quality',
+    labelKey: 'Quality',
+    path: '/quality',
+    icon: 'PlaylistAddCheck',
+    children: [
+      { key: 'quality-dashboard', labelKey: 'Dashboard', path: '/quality/dashboard', icon: 'Dashboard' },
+      { key: 'quality-inspection-planning', labelKey: 'Inspection Planning', path: '/quality/inspection-planning', icon: 'DateRange' },
+      { key: 'quality-new-plan', labelKey: 'New Plan', path: '/quality/new-plan', icon: 'NoteAdd' },
+      { key: 'quality-incoming-inspection', labelKey: 'Incoming Inspection', path: '/quality/incoming-inspection', icon: 'MoveToInbox' },
+      { key: 'quality-new-inspection', labelKey: 'New Inspection', path: '/quality/new-inspection', icon: 'NoteAdd' },
+      { key: 'quality-in-process-inspection', labelKey: 'In-process Inspection', path: '/quality/in-process-inspection', icon: 'Engineering' },
+      { key: 'quality-new-in-process-inspection', labelKey: 'New In-process Inspection', path: '/quality/new-in-process-inspection', icon: 'NoteAdd' },
+      { key: 'quality-final-inspection', labelKey: 'Final Inspection', path: '/quality/final-inspection', icon: 'TaskAlt' },
+      { key: 'quality-new-final-inspection', labelKey: 'New Final Inspection', path: '/quality/new-final-inspection', icon: 'NoteAdd' },
+      { key: 'quality-ncr', labelKey: 'Non-conformance (NCR)', path: '/quality/ncr', icon: 'WarningAmber' },
+      { key: 'quality-new-ncr', labelKey: 'New NCR', path: '/quality/new-ncr', icon: 'NoteAdd' },
+      { key: 'quality-capa', labelKey: 'Corrective Action (CAPA)', path: '/quality/capa', icon: 'Build' },
+      { key: 'quality-new-capa', labelKey: 'New CAPA', path: '/quality/new-capa', icon: 'NoteAdd' },
+      { key: 'quality-report', labelKey: 'Quality Report', path: '/quality/report', icon: 'Assessment' },
     ],
   },
   {

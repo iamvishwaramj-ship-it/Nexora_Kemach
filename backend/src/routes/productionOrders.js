@@ -67,7 +67,18 @@ router.get('/orders/:id', auth(), asyncHandler(async (req, res) => {
   res.json({ success: true, data: order });
 }));
 
-// POST /api/production/orders — create + snapshot.
+// Extracted from the POST handler below so other callers that need to
+// create a real Production Order through this exact same logic — numbering,
+// BOM/Routing resolution, component/operation snapshotting, all of it — can
+// do so without re-implementing any of it, rather than duplicating this
+// logic elsewhere. Mirrors createPurchaseOrderRecord's extraction in
+// routes/resources.js (see that function's own comment for the reference
+// version of this pattern). First consumer: the Phase 1 MRP/Generate Order
+// feature's "Generate Orders" action (services/mrpService.js) — it calls
+// this function for every Generate Order line classified as a Production
+// Order, so a generated order is created exactly the same way a manually
+// created one is, with the same validation and the same BOM/Routing
+// snapshot behavior.
 //
 // If bomId/routingId are omitted, the server looks up the one
 // isDefault:true, status:'Active' BOM/Routing for productCode. Routing is
@@ -76,8 +87,7 @@ router.get('/orders/:id', auth(), asyncHandler(async (req, res) => {
 // this phase); BOM is required, because without one there is nothing to
 // snapshot into ProductionOrderComponent and no Material Requisition/Issue
 // phase (later) would have anything to work from.
-router.post('/orders', auth(), asyncHandler(async (req, res) => {
-  const body = req.body || {};
+async function createProductionOrderRecord(body, user) {
   const { productCode, orderQty } = body;
 
   if (!productCode || !String(productCode).trim()) throw badRequest('Product code is required');
@@ -147,8 +157,8 @@ router.post('/orders', auth(), asyncHandler(async (req, res) => {
         baseEntry: body.baseEntry != null ? Number(body.baseEntry) : null,
         baseLine: body.baseLine != null ? Number(body.baseLine) : null,
         notes: body.notes || null,
-        createdById: req.user.id,
-        createdByName: req.user.name || req.user.email || null,
+        createdById: user.id,
+        createdByName: user.name || user.email || null,
         components: {
           create: bom.lines.map((line) => ({
             componentProductCode: line.componentProductCode,
@@ -175,6 +185,11 @@ router.post('/orders', auth(), asyncHandler(async (req, res) => {
     return created;
   });
 
+  return order;
+}
+
+router.post('/orders', auth(), asyncHandler(async (req, res) => {
+  const order = await createProductionOrderRecord(req.body || {}, req.user);
   res.status(201).json({ success: true, data: order });
 }));
 
@@ -274,3 +289,6 @@ router.delete('/orders/:id', auth(), asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
+// Exposed so other routes can create a real Production Order through this
+// exact same logic — see createProductionOrderRecord's own comment above.
+module.exports.createProductionOrderRecord = createProductionOrderRecord;

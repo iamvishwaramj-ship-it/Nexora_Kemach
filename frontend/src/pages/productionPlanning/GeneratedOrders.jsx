@@ -1,20 +1,14 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box, Card, CardContent, Stack, Typography, Grid, Button, Chip, Avatar,
   Table, TableHead, TableBody, TableRow, TableCell, TextField, InputAdornment,
-  Tabs, Tab, IconButton, Menu, MenuItem,
+  Tabs, Tab, CircularProgress,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
-import BarChartIcon from '@mui/icons-material/BarChart';
 import SearchIcon from '@mui/icons-material/Search';
-import FilterAltOutlinedIcon from '@mui/icons-material/FilterAltOutlined';
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
@@ -22,76 +16,79 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import BuildIcon from '@mui/icons-material/Build';
 import EntityHeaderCard from '../../components/common/EntityHeaderCard';
 import ScrollableTableContainer from '../../components/data-display/ScrollableTableContainer';
+import { useGetGenerationOrderQuery } from '../../features/productionPlanningApi';
 
 // ---------------------------------------------------------------------------
-// Static, UI-only mock of the "Generated Orders" results screen, built to
-// match the reference design the user supplied. Same convention as the other
-// Production Planning screens already built this way (Dashboard, Generate
-// Order - MRP, Order Generation Options): Production/Purchase/Subcontracting/
-// Job Work order documents from a Generate Order run have no backing data
-// model in this schema, so this is fixed mock data laid out exactly as
-// designed. Reached from the "Generate Orders" button on the Generate Order -
-// MRP and Order Generation Options pages (wired for real navigation), not
-// from the sidebar menu -- same as the reference design, which shows it only
-// in the breadcrumb trail. Local state only -- nothing here persists or
-// calls the server.
+// Generated Orders — Phase 1 (MRP & Order Generation), approved scope.
+// Shows the real Production/Purchase Orders created from a completed
+// Generation Order (GET /production-planning/generation-orders/:id, whose
+// lines carry resultOrderType/resultOrderId/resultOrderNo once
+// generateOrders() has run). Subcontracting and Job Work are not modelled
+// in this schema (approved decision 1) and always show as empty here,
+// never simulated.
 // ---------------------------------------------------------------------------
 
-const HEADER_INFO = [
-  { label: 'GO Number', value: 'GO-2026-10-001' },
-  { label: 'Source Type', value: 'MRP', isSourceChip: true },
-  { label: 'MRP Run', value: 'MRP-2026-10-01' },
-  { label: 'GO Date', value: '01-Oct-2026' },
-  { label: 'Required Delivery Date', value: '31-Dec-2026' },
-  { label: 'Plant / Location', value: 'Main Plant' },
-  { label: 'Status', value: 'Completed', isStatusChip: true },
-];
-
-const SUMMARY_CARDS = [
-  { key: 'production', label: 'Production Orders', icon: PrecisionManufacturingIcon, color: '#1565c0', value: 2, status: 'Created' },
-  { key: 'purchase', label: 'Purchase Orders', icon: ShoppingCartIcon, color: '#e65100', value: 1, status: 'Created' },
-  { key: 'subcontracting', label: 'Subcontracting Orders', icon: GroupsIcon, color: '#6a1b9a', value: 0, status: '-' },
-  { key: 'jobwork', label: 'Job Work Orders', icon: BuildIcon, color: '#00695c', value: 0, status: '-' },
-];
-
-const PRODUCTION_ORDERS = [
-  { no: 'PRO-2026-10-001', code: 'FG-1001', desc: 'Gear Housing', qty: 500, uom: 'Nos', start: '02-Oct-2026', due: '05-Oct-2026', routing: 'RT-01', createdOn: '01-Oct-2026 10:24', createdBy: 'Kannan P' },
-  { no: 'PRO-2026-10-002', code: 'FG-1003', desc: 'Pump Cover', qty: 400, uom: 'Nos', start: '06-Oct-2026', due: '12-Oct-2026', routing: 'RT-03', createdOn: '01-Oct-2026 10:24', createdBy: 'Kannan P' },
-];
-
-const PURCHASE_ORDERS = [
-  { no: 'PO-2026-10-001', code: 'RM-010', desc: 'Paint', qty: 50, uom: 'Nos', vendor: 'SUP-004', expected: '03-Oct-2026', createdOn: '01-Oct-2026 10:24', createdBy: 'Kannan P' },
-];
-
-const TABS = [
-  { key: 'all', label: `All Orders (${PRODUCTION_ORDERS.length + PURCHASE_ORDERS.length})` },
-  { key: 'production', label: `Production Orders (${PRODUCTION_ORDERS.length})` },
-  { key: 'purchase', label: `Purchase Orders (${PURCHASE_ORDERS.length})` },
-  { key: 'subcontracting', label: 'Subcontracting Orders (0)' },
-  { key: 'jobwork', label: 'Job Work Orders (0)' },
-];
-
-function RowActionMenu() {
-  const [anchorEl, setAnchorEl] = useState(null);
-  return (
-    <>
-      <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
-        <MoreHorizIcon fontSize="small" />
-      </IconButton>
-      <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
-        <MenuItem onClick={() => setAnchorEl(null)}>View</MenuItem>
-        <MenuItem onClick={() => setAnchorEl(null)}>Print</MenuItem>
-        <MenuItem onClick={() => setAnchorEl(null)}>Edit</MenuItem>
-      </Menu>
-    </>
-  );
+function fmtDateTime(d) {
+  return d ? new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+}
+function fmtDate(d) {
+  return d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 }
 
 export default function GeneratedOrders() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const goId = Number(searchParams.get('goId')) || null;
+  const { data: go, isLoading, isError } = useGetGenerationOrderQuery(goId, { skip: !goId });
+
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
-  const [exportAnchor, setExportAnchor] = useState(null);
+
+  if (!goId) {
+    return (
+      <Box sx={{ py: 6, textAlign: 'center' }}>
+        <Typography variant="body2" color="text.secondary">No Generation Order selected.</Typography>
+        <Button sx={{ mt: 2 }} variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/production-planning/generate-order-mrp')}>Back</Button>
+      </Box>
+    );
+  }
+  if (isLoading) return <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress size={28} /></Box>;
+  if (isError || !go) {
+    return (
+      <Box sx={{ py: 6, textAlign: 'center' }}>
+        <Typography variant="body2" color="error">Could not load this Generation Order.</Typography>
+        <Button sx={{ mt: 2 }} variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/production-planning/generate-order-mrp')}>Back</Button>
+      </Box>
+    );
+  }
+
+  const lines = go.lines || [];
+  const productionLines = lines.filter((l) => l.orderType === 'Production');
+  const purchaseLines = lines.filter((l) => l.orderType === 'Purchase');
+
+  const headerInfo = [
+    { label: 'GO Number', value: go.goNumber },
+    { label: 'Source Type', value: go.sourceType, isSourceChip: true },
+    { label: 'GO Date', value: fmtDate(go.goDate) },
+    { label: 'Required Delivery Date', value: fmtDate(go.requiredDeliveryDate) },
+    { label: 'Plant / Location', value: go.plant || '-' },
+    { label: 'Status', value: go.status, isStatusChip: true },
+  ];
+
+  const summaryCards = [
+    { key: 'production', label: 'Production Orders', icon: PrecisionManufacturingIcon, color: '#1565c0', value: productionLines.length, status: go.status === 'Completed' ? 'Created' : 'Pending' },
+    { key: 'purchase', label: 'Purchase Orders', icon: ShoppingCartIcon, color: '#e65100', value: purchaseLines.length, status: go.status === 'Completed' ? 'Created' : 'Pending' },
+    { key: 'subcontracting', label: 'Subcontracting Orders', icon: GroupsIcon, color: '#6a1b9a', value: 0, status: 'Not available' },
+    { key: 'jobwork', label: 'Job Work Orders', icon: BuildIcon, color: '#00695c', value: 0, status: 'Not available' },
+  ];
+
+  const TABS = [
+    { key: 'all', label: `All Orders (${productionLines.length + purchaseLines.length})` },
+    { key: 'production', label: `Production Orders (${productionLines.length})` },
+    { key: 'purchase', label: `Purchase Orders (${purchaseLines.length})` },
+    { key: 'subcontracting', label: 'Subcontracting Orders (0)' },
+    { key: 'jobwork', label: 'Job Work Orders (0)' },
+  ];
 
   const showProduction = tab === 'all' || tab === 'production';
   const showPurchase = tab === 'all' || tab === 'purchase';
@@ -99,48 +96,43 @@ export default function GeneratedOrders() {
   const showJobWork = tab === 'all' || tab === 'jobwork';
 
   const q = search.trim().toLowerCase();
-  const filteredProduction = PRODUCTION_ORDERS.filter((r) => !q || r.no.toLowerCase().includes(q) || r.code.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q));
-  const filteredPurchase = PURCHASE_ORDERS.filter((r) => !q || r.no.toLowerCase().includes(q) || r.code.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q));
+  const filteredProduction = productionLines.filter((r) => !q || (r.resultOrderNo || '').toLowerCase().includes(q) || r.productCode.toLowerCase().includes(q) || (r.productName || '').toLowerCase().includes(q));
+  const filteredPurchase = purchaseLines.filter((r) => !q || (r.resultOrderNo || '').toLowerCase().includes(q) || r.productCode.toLowerCase().includes(q) || (r.productName || '').toLowerCase().includes(q));
 
   return (
     <Box>
       <EntityHeaderCard
         icon={<SettingsIcon />}
         title="Generated Orders"
-        subtitle="List of Production, Purchase, Subcontracting and Job Work orders generated from GO-2026-10-001."
+        subtitle={`List of Production and Purchase orders generated from ${go.goNumber}.`}
       />
 
-      {/* Header info strip */}
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
-            <Grid container spacing={2.5} sx={{ flex: 1 }}>
-              {HEADER_INFO.map((f) => (
-                <Grid item xs={6} sm={4} md={12 / HEADER_INFO.length} key={f.label}>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{f.label}</Typography>
-                  {f.isSourceChip ? (
-                    <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mt: 0.25 }}>
-                      <Avatar sx={{ bgcolor: 'warning.main', width: 22, height: 22 }}>
-                        <AssignmentOutlinedIcon sx={{ fontSize: 14 }} />
-                      </Avatar>
-                      <Typography variant="body2" fontWeight={600}>{f.value}</Typography>
-                    </Stack>
-                  ) : f.isStatusChip ? (
-                    <Chip size="small" label={f.value} color="success" variant="outlined" sx={{ mt: 0.25, fontWeight: 600 }} />
-                  ) : (
+          <Grid container spacing={2.5}>
+            {headerInfo.map((f) => (
+              <Grid item xs={6} sm={4} md={12 / headerInfo.length} key={f.label}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{f.label}</Typography>
+                {f.isSourceChip ? (
+                  <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mt: 0.25 }}>
+                    <Avatar sx={{ bgcolor: 'warning.main', width: 22, height: 22 }}>
+                      <AssignmentOutlinedIcon sx={{ fontSize: 14 }} />
+                    </Avatar>
                     <Typography variant="body2" fontWeight={600}>{f.value}</Typography>
-                  )}
-                </Grid>
-              ))}
-            </Grid>
-            <Button variant="outlined" startIcon={<BarChartIcon />}>View GO Details</Button>
-          </Stack>
+                  </Stack>
+                ) : f.isStatusChip ? (
+                  <Chip size="small" label={f.value} color={f.value === 'Completed' ? 'success' : 'default'} variant="outlined" sx={{ mt: 0.25, fontWeight: 600 }} />
+                ) : (
+                  <Typography variant="body2" fontWeight={600}>{f.value}</Typography>
+                )}
+              </Grid>
+            ))}
+          </Grid>
         </CardContent>
       </Card>
 
-      {/* Summary cards */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        {SUMMARY_CARDS.map((c) => {
+        {summaryCards.map((c) => {
           const Icon = c.icon;
           return (
             <Grid item xs={12} sm={6} md={3} key={c.key}>
@@ -163,41 +155,17 @@ export default function GeneratedOrders() {
         })}
       </Grid>
 
-      {/* Orders list */}
       <Card variant="outlined">
-        <Stack
-          direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1.5}
-          sx={{ px: 2.5, pt: 1 }}
-        >
-          <Tabs
-            value={tab}
-            onChange={(e, v) => setTab(v)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{ minHeight: 44, '& .MuiTab-root': { minHeight: 44 } }}
-          >
+        <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1.5} sx={{ px: 2.5, pt: 1 }}>
+          <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons="auto" sx={{ minHeight: 44, '& .MuiTab-root': { minHeight: 44 } }}>
             {TABS.map((t) => <Tab key={t.key} value={t.key} label={t.label} />)}
           </Tabs>
           <Stack direction="row" alignItems="center" spacing={1.5} sx={{ py: 1.5 }} flexWrap="wrap" useFlexGap>
             <TextField
-              size="small"
-              placeholder="Search orders..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              sx={{ minWidth: 220 }}
+              size="small" placeholder="Search orders..." value={search}
+              onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 220 }}
               InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
             />
-            <Button variant="outlined" size="small" startIcon={<FilterAltOutlinedIcon />}>Filter</Button>
-            <Button
-              variant="outlined" size="small" startIcon={<FileDownloadOutlinedIcon />} endIcon={<KeyboardArrowDownIcon />}
-              onClick={(e) => setExportAnchor(e.currentTarget)}
-            >
-              Export
-            </Button>
-            <Menu anchorEl={exportAnchor} open={!!exportAnchor} onClose={() => setExportAnchor(null)}>
-              <MenuItem onClick={() => setExportAnchor(null)}><PictureAsPdfOutlinedIcon fontSize="small" sx={{ mr: 1 }} /> PDF</MenuItem>
-              <MenuItem onClick={() => setExportAnchor(null)}><InsertDriveFileOutlinedIcon fontSize="small" sx={{ mr: 1 }} /> Excel</MenuItem>
-            </Menu>
           </Stack>
         </Stack>
 
@@ -210,48 +178,49 @@ export default function GeneratedOrders() {
                 </Avatar>
                 <Typography variant="subtitle1" fontWeight={700}>Production Orders ({filteredProduction.length})</Typography>
               </Stack>
-              <ScrollableTableContainer maxHeight="none">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>S.No</TableCell>
-                      <TableCell>Production Order No.</TableCell>
-                      <TableCell>FG Item Code</TableCell>
-                      <TableCell>FG Description</TableCell>
-                      <TableCell align="right">Order Qty</TableCell>
-                      <TableCell>UOM</TableCell>
-                      <TableCell>Planned Start Date</TableCell>
-                      <TableCell>Due Date</TableCell>
-                      <TableCell>Routing</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Created On</TableCell>
-                      <TableCell>Created By</TableCell>
-                      <TableCell>Remarks</TableCell>
-                      <TableCell>Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredProduction.map((r, idx) => (
-                      <TableRow key={r.no} hover>
-                        <TableCell>{idx + 1}</TableCell>
-                        <TableCell><Typography variant="body2" color="primary.main" fontWeight={600}>{r.no}</Typography></TableCell>
-                        <TableCell>{r.code}</TableCell>
-                        <TableCell>{r.desc}</TableCell>
-                        <TableCell align="right">{r.qty}</TableCell>
-                        <TableCell>{r.uom}</TableCell>
-                        <TableCell>{r.start}</TableCell>
-                        <TableCell>{r.due}</TableCell>
-                        <TableCell>{r.routing}</TableCell>
-                        <TableCell><Chip size="small" label="Created" color="success" variant="outlined" /></TableCell>
-                        <TableCell>{r.createdOn}</TableCell>
-                        <TableCell>{r.createdBy}</TableCell>
-                        <TableCell>-</TableCell>
-                        <TableCell><RowActionMenu /></TableCell>
+              {filteredProduction.length === 0 ? (
+                <Stack direction="row" alignItems="center" spacing={1} justifyContent="center" sx={{ py: 2 }}>
+                  <InsertDriveFileOutlinedIcon fontSize="small" sx={{ color: 'text.disabled' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    {go.status === 'Completed' ? 'No Production Orders in this GO.' : 'Orders have not been generated yet.'}
+                  </Typography>
+                </Stack>
+              ) : (
+                <ScrollableTableContainer maxHeight="none">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>S.No</TableCell>
+                        <TableCell>Production Order No.</TableCell>
+                        <TableCell>FG Item Code</TableCell>
+                        <TableCell>FG Description</TableCell>
+                        <TableCell align="right">Order Qty</TableCell>
+                        <TableCell>UOM</TableCell>
+                        <TableCell>Due Date</TableCell>
+                        <TableCell>Status</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollableTableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {filteredProduction.map((r, idx) => (
+                        <TableRow key={r.id} hover>
+                          <TableCell>{idx + 1}</TableCell>
+                          <TableCell>
+                            {r.resultOrderNo
+                              ? <Typography variant="body2" color="primary.main" fontWeight={600}>{r.resultOrderNo}</Typography>
+                              : <Chip size="small" label="Pending" variant="outlined" />}
+                          </TableCell>
+                          <TableCell>{r.productCode}</TableCell>
+                          <TableCell>{r.productName || '-'}</TableCell>
+                          <TableCell align="right">{Number(r.orderQty).toLocaleString('en-IN')}</TableCell>
+                          <TableCell>{r.uom || '-'}</TableCell>
+                          <TableCell>{fmtDate(r.dueDate)}</TableCell>
+                          <TableCell><Chip size="small" label={r.resultOrderNo ? 'Created' : 'Pending'} color={r.resultOrderNo ? 'success' : 'default'} variant="outlined" /></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollableTableContainer>
+              )}
             </Box>
           )}
 
@@ -263,46 +232,51 @@ export default function GeneratedOrders() {
                 </Avatar>
                 <Typography variant="subtitle1" fontWeight={700}>Purchase Orders ({filteredPurchase.length})</Typography>
               </Stack>
-              <ScrollableTableContainer maxHeight="none">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>S.No</TableCell>
-                      <TableCell>Purchase Order No.</TableCell>
-                      <TableCell>Item Code</TableCell>
-                      <TableCell>Item Description</TableCell>
-                      <TableCell align="right">Order Qty</TableCell>
-                      <TableCell>UOM</TableCell>
-                      <TableCell>Vendor</TableCell>
-                      <TableCell>Expected Delivery Date</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Created On</TableCell>
-                      <TableCell>Created By</TableCell>
-                      <TableCell>Remarks</TableCell>
-                      <TableCell>Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredPurchase.map((r, idx) => (
-                      <TableRow key={r.no} hover>
-                        <TableCell>{idx + 1}</TableCell>
-                        <TableCell><Typography variant="body2" color="primary.main" fontWeight={600}>{r.no}</Typography></TableCell>
-                        <TableCell>{r.code}</TableCell>
-                        <TableCell>{r.desc}</TableCell>
-                        <TableCell align="right">{r.qty}</TableCell>
-                        <TableCell>{r.uom}</TableCell>
-                        <TableCell>{r.vendor}</TableCell>
-                        <TableCell>{r.expected}</TableCell>
-                        <TableCell><Chip size="small" label="Created" color="success" variant="outlined" /></TableCell>
-                        <TableCell>{r.createdOn}</TableCell>
-                        <TableCell>{r.createdBy}</TableCell>
-                        <TableCell>-</TableCell>
-                        <TableCell><RowActionMenu /></TableCell>
+              {filteredPurchase.length === 0 ? (
+                <Stack direction="row" alignItems="center" spacing={1} justifyContent="center" sx={{ py: 2 }}>
+                  <InsertDriveFileOutlinedIcon fontSize="small" sx={{ color: 'text.disabled' }} />
+                  <Typography variant="body2" color="text.secondary">
+                    {go.status === 'Completed' ? 'No Purchase Orders in this GO.' : 'Orders have not been generated yet.'}
+                  </Typography>
+                </Stack>
+              ) : (
+                <ScrollableTableContainer maxHeight="none">
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>S.No</TableCell>
+                        <TableCell>Purchase Order No.</TableCell>
+                        <TableCell>Item Code</TableCell>
+                        <TableCell>Item Description</TableCell>
+                        <TableCell align="right">Order Qty</TableCell>
+                        <TableCell>UOM</TableCell>
+                        <TableCell>Vendor</TableCell>
+                        <TableCell>Due Date</TableCell>
+                        <TableCell>Status</TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </ScrollableTableContainer>
+                    </TableHead>
+                    <TableBody>
+                      {filteredPurchase.map((r, idx) => (
+                        <TableRow key={r.id} hover>
+                          <TableCell>{idx + 1}</TableCell>
+                          <TableCell>
+                            {r.resultOrderNo
+                              ? <Typography variant="body2" color="primary.main" fontWeight={600}>{r.resultOrderNo}</Typography>
+                              : <Chip size="small" label="Pending" variant="outlined" />}
+                          </TableCell>
+                          <TableCell>{r.productCode}</TableCell>
+                          <TableCell>{r.productName || '-'}</TableCell>
+                          <TableCell align="right">{Number(r.orderQty).toLocaleString('en-IN')}</TableCell>
+                          <TableCell>{r.uom || '-'}</TableCell>
+                          <TableCell>{r.vendorCode || '-'}</TableCell>
+                          <TableCell>{fmtDate(r.dueDate)}</TableCell>
+                          <TableCell><Chip size="small" label={r.resultOrderNo ? 'Created' : 'Pending'} color={r.resultOrderNo ? 'success' : 'default'} variant="outlined" /></TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollableTableContainer>
+              )}
             </Box>
           )}
 
@@ -314,36 +288,10 @@ export default function GeneratedOrders() {
                 </Avatar>
                 <Typography variant="subtitle1" fontWeight={700}>Subcontracting Orders (0)</Typography>
               </Stack>
-              <ScrollableTableContainer maxHeight="none">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>S.No</TableCell>
-                      <TableCell>Subcontract Order No.</TableCell>
-                      <TableCell>Item Code</TableCell>
-                      <TableCell>Item Description</TableCell>
-                      <TableCell align="right">Order Qty</TableCell>
-                      <TableCell>UOM</TableCell>
-                      <TableCell>Vendor / Subcontractor</TableCell>
-                      <TableCell>Expected Delivery Date</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Created On</TableCell>
-                      <TableCell>Remarks</TableCell>
-                      <TableCell>Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell colSpan={12}>
-                        <Stack direction="row" alignItems="center" spacing={1} justifyContent="center" sx={{ py: 2 }}>
-                          <InsertDriveFileOutlinedIcon fontSize="small" sx={{ color: 'text.disabled' }} />
-                          <Typography variant="body2" color="text.secondary">No subcontracting orders generated for this GO.</Typography>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </ScrollableTableContainer>
+              <Stack direction="row" alignItems="center" spacing={1} justifyContent="center" sx={{ py: 2 }}>
+                <InsertDriveFileOutlinedIcon fontSize="small" sx={{ color: 'text.disabled' }} />
+                <Typography variant="body2" color="text.secondary">Subcontracting Orders are not available yet in this system.</Typography>
+              </Stack>
             </Box>
           )}
 
@@ -355,36 +303,10 @@ export default function GeneratedOrders() {
                 </Avatar>
                 <Typography variant="subtitle1" fontWeight={700}>Job Work Orders (0)</Typography>
               </Stack>
-              <ScrollableTableContainer maxHeight="none">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>S.No</TableCell>
-                      <TableCell>Job Work Order No.</TableCell>
-                      <TableCell>Item Code</TableCell>
-                      <TableCell>Item Description</TableCell>
-                      <TableCell align="right">Order Qty</TableCell>
-                      <TableCell>UOM</TableCell>
-                      <TableCell>Vendor / Work Center</TableCell>
-                      <TableCell>Expected Delivery Date</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Created On</TableCell>
-                      <TableCell>Remarks</TableCell>
-                      <TableCell>Action</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell colSpan={12}>
-                        <Stack direction="row" alignItems="center" spacing={1} justifyContent="center" sx={{ py: 2 }}>
-                          <InsertDriveFileOutlinedIcon fontSize="small" sx={{ color: 'text.disabled' }} />
-                          <Typography variant="body2" color="text.secondary">No job work orders generated for this GO.</Typography>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </ScrollableTableContainer>
+              <Stack direction="row" alignItems="center" spacing={1} justifyContent="center" sx={{ py: 2 }}>
+                <InsertDriveFileOutlinedIcon fontSize="small" sx={{ color: 'text.disabled' }} />
+                <Typography variant="body2" color="text.secondary">Job Work Orders are not available yet in this system.</Typography>
+              </Stack>
             </Box>
           )}
         </Box>
@@ -394,9 +316,6 @@ export default function GeneratedOrders() {
         <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/production-planning/generate-order-mrp')}>
           Back to Generate Orders
         </Button>
-        <Box sx={{ flex: 1 }} />
-        <Button variant="contained" startIcon={<PictureAsPdfOutlinedIcon />}>Download Orders Report (PDF)</Button>
-        <Button variant="outlined" startIcon={<FileDownloadOutlinedIcon />}>Export to Excel</Button>
       </Stack>
     </Box>
   );

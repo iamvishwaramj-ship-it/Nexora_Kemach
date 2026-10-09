@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Card, CardContent, Stack, Typography, Grid, TextField, MenuItem, Button,
   Chip, Checkbox, InputAdornment, Table, TableHead, TableBody, TableRow, TableCell,
-  IconButton, Avatar, Accordion, AccordionSummary, AccordionDetails,
-  ToggleButtonGroup, ToggleButton,
+  Avatar, Accordion, AccordionSummary, AccordionDetails,
+  ToggleButtonGroup, ToggleButton, CircularProgress,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
@@ -13,10 +13,6 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import InsightsIcon from '@mui/icons-material/Insights';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import SearchIcon from '@mui/icons-material/Search';
-import FilterAltOutlinedIcon from '@mui/icons-material/FilterAltOutlined';
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
@@ -24,130 +20,90 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import GroupsIcon from '@mui/icons-material/Groups';
 import BuildIcon from '@mui/icons-material/Build';
 import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest';
-import TuneIcon from '@mui/icons-material/Tune';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import EntityHeaderCard from '../../components/common/EntityHeaderCard';
 import ScrollableTableContainer from '../../components/data-display/ScrollableTableContainer';
-import EntityListPagination from '../../components/data-display/EntityListPagination';
+import { useNotify } from '../../components/feedback/NotificationProvider';
+import {
+  useListMrpRunsQuery, useRunMrpMutation, useGetMrpRunQuery, useLazyGetMrpItemDetailQuery,
+  useCreateGenerationOrderMutation,
+} from '../../features/productionPlanningApi';
 
 // ---------------------------------------------------------------------------
-// Static, UI-only mock of the "Generate Order - MRP" screen, built to match
-// the reference design the user supplied. Same convention as
-// pages/purchase/PurchaseOrderPrintPreview.jsx and the Production Planning >
-// Dashboard page: there is no MRP Run, BOM, Routing/Operations, or
-// Make/Buy/Subcontract classification data model anywhere in this schema —
-// nothing here (requirements, BOM components, routing operations, stock
-// availability, order type suggestions) has a real backing table, so this
-// lays out the screen exactly as designed with fixed mock data rather than
-// fabricating "real" numbers against tables that don't exist. The user
-// explicitly chose this static-mock option (same choice made for the
-// Dashboard screen) when asked. Local state only -- nothing here persists or
-// calls the server; only the 5 method cards actually navigate (to the other
-// already-built Generate Order pages), since that costs nothing to make real.
+// Generate Order - MRP — Phase 1 (MRP & Order Generation), explicitly
+// approved scope. Real MRP run data from POST/GET /production-planning/
+// mrp-runs (backend/src/services/mrpService.js) replaces the earlier static
+// mock. Subcontracting/Job Work order generation is not available in this
+// phase (approved decision 1) — their cards below are shown disabled rather
+// than removed or simulated.
 // ---------------------------------------------------------------------------
 
 const METHODS = [
-  {
-    key: 'mrp', path: '/production-planning/generate-order-mrp', label: 'MRP', desc: 'Based on MRP planned requirements',
-    icon: AssignmentOutlinedIcon, color: '#e65100', a: { label: 'Items', value: '52' }, b: { label: 'Net Qty', value: '12,500' },
-  },
-  {
-    key: 'manual', path: '/production-planning/generate-order-manual', label: 'Manual', desc: 'Manually select FG items',
-    icon: TouchAppIcon, color: '#1565c0', a: { label: 'Items', value: '28' }, b: { label: 'Net Qty', value: '8,200' },
-  },
-  {
-    key: 'sales-order', path: '/production-planning/generate-order-sales-order', label: 'Sales Order', desc: 'Based on open Sales Order quantity',
-    icon: DescriptionOutlinedIcon, color: '#2e7d32', a: { label: 'Orders', value: '15' }, b: { label: 'Open Qty', value: '6,800' },
-  },
-  {
-    key: 'forecast', path: '/production-planning/generate-order-forecast', label: 'Forecast', desc: 'Based on forecast / planned demand',
-    icon: InsightsIcon, color: '#6a1b9a', a: { label: 'Plans', value: '8' }, b: { label: 'Net Qty', value: '4,500' },
-  },
-  {
-    key: 'project', path: '/production-planning/generate-order-project', label: 'Project', desc: 'Based on project / job requirement',
-    icon: WorkOutlineIcon, color: '#00695c', a: { label: 'Projects', value: '6' }, b: { label: 'Net Qty', value: '3,800' },
-  },
+  { key: 'mrp', path: '/production-planning/generate-order-mrp', label: 'MRP', desc: 'Based on MRP planned requirements', icon: AssignmentOutlinedIcon, color: '#e65100' },
+  { key: 'manual', path: '/production-planning/generate-order-manual', label: 'Manual', desc: 'Manually select FG items', icon: TouchAppIcon, color: '#1565c0' },
+  { key: 'sales-order', path: '/production-planning/generate-order-sales-order', label: 'Sales Order', desc: 'Based on open Sales Order quantity', icon: DescriptionOutlinedIcon, color: '#2e7d32' },
+  { key: 'forecast', path: '/production-planning/generate-order-forecast', label: 'Forecast', desc: 'Based on forecast / planned demand', icon: InsightsIcon, color: '#6a1b9a' },
+  { key: 'project', path: '/production-planning/generate-order-project', label: 'Project', desc: 'Based on project / job requirement (not yet available)', icon: WorkOutlineIcon, color: '#00695c', disabled: true },
 ];
 
-const MRP_SUMMARY = [
-  { label: 'Total Requirements', value: 52, color: 'text.primary' },
-  { label: 'Already Covered', value: 20, color: 'success.main' },
-  { label: 'In Progress', value: 12, color: 'warning.main' },
-  { label: 'On Hold', value: 5, color: 'error.main' },
-  { label: 'Net to Generate', value: 15, color: 'primary.main' },
-];
-
-const ORDER_TYPE_META = {
-  'Production Order': { color: 'info' },
-  'Purchase Order': { color: 'warning' },
-  'Subcontracting Order': { color: 'secondary' },
-  'Job Work Order': { color: 'success' },
-};
-
-const REQUIREMENTS = [
-  { code: 'FG-1001', desc: 'Gear Housing', mrpReq: 2000, covered: 500, inProgress: 800, onHold: 200, net: 500, uom: 'Nos', date: '05-Oct-2026', orderType: 'Production Order' },
-  { code: 'FG-1002', desc: 'Motor Bracket', mrpReq: 1500, covered: 300, inProgress: 600, onHold: 100, net: 500, uom: 'Nos', date: '06-Oct-2026', orderType: 'Purchase Order' },
-  { code: 'FG-1003', desc: 'Pump Cover', mrpReq: 800, covered: 0, inProgress: 400, onHold: 0, net: 400, uom: 'Nos', date: '08-Oct-2026', orderType: 'Production Order' },
-  { code: 'FG-1004', desc: 'Shaft Assembly', mrpReq: 1200, covered: 200, inProgress: 800, onHold: 0, net: 200, uom: 'Nos', date: '10-Oct-2026', orderType: 'Subcontracting Order' },
-  { code: 'FG-1005', desc: 'Valve Body', mrpReq: 600, covered: 0, inProgress: 400, onHold: 0, net: 200, uom: 'Nos', date: '12-Oct-2026', orderType: 'Production Order' },
-  { code: 'FG-1006', desc: 'Flange Plate', mrpReq: 400, covered: 0, inProgress: 0, onHold: 0, net: 400, uom: 'Nos', date: '15-Oct-2026', orderType: 'Purchase Order' },
-  { code: 'FG-1007', desc: 'Bearing Housing', mrpReq: 300, covered: 0, inProgress: 0, onHold: 0, net: 300, uom: 'Nos', date: '18-Oct-2026', orderType: 'Job Work Order' },
-  { code: 'FG-1008', desc: 'Heat Treatment Part', mrpReq: 500, covered: 0, inProgress: 200, onHold: 0, net: 300, uom: 'Nos', date: '20-Oct-2026', orderType: 'Subcontracting Order' },
-];
-
-const TOTAL_REQUIREMENT_RECORDS = 15; // cosmetic -- matches "Showing 1 to 8 of 15 records"; only page 1's 8 rows are mocked.
-
-const BOM_COMPONENTS = [
-  { code: 'RM-001', desc: 'Casting', reqQty: 1.0, type: 'Make' },
-  { code: 'RM-002', desc: 'Bush', reqQty: 2.0, type: 'Buy' },
-  { code: 'RM-003', desc: 'Seal', reqQty: 4.0, type: 'Buy' },
-  { code: 'RM-004', desc: 'Gear Blank', reqQty: 1.0, type: 'Subcontract' },
-];
-const BOM_TOTAL_COMPONENTS = 12; // cosmetic -- "View all components (12)"
-
-const PROCUREMENT_TYPE_COLOR = { Make: 'success', Buy: 'warning', Subcontract: 'secondary' };
-
-const SELECTED_ITEM = { code: 'FG-1001', name: 'Gear Housing', uom: 'Nos', netQty: 500, requiredDate: '05-Oct-2026' };
-
-const ORDER_PREVIEW_CARDS = [
-  { key: 'production', label: 'Production Orders', icon: PrecisionManufacturingIcon, color: 'info', items: 2, qty: '900', unit: 'Nos' },
-  { key: 'purchase', label: 'Purchase Orders', icon: ShoppingCartIcon, color: 'warning', items: 1, qty: '500', unit: 'Nos' },
-  { key: 'subcontracting', label: 'Subcontracting Orders', icon: GroupsIcon, color: 'secondary', items: 0, qty: '0', unit: 'Nos' },
-  { key: 'jobwork', label: 'Job Work Orders', icon: BuildIcon, color: 'success', items: 0, qty: '0', unit: 'Nos' },
-];
+const ORDER_TYPE_META = { Production: { color: 'info', label: 'Production Order' }, Purchase: { color: 'warning', label: 'Purchase Order' }, Unclassified: { color: 'default', label: 'Unclassified' } };
 
 function numberFmt(n) {
   return Number(n || 0).toLocaleString('en-IN');
 }
+function monthStr(offset = 0) {
+  const d = new Date();
+  d.setMonth(d.getMonth() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
 
 export default function GenerateOrderMrp() {
   const navigate = useNavigate();
-  const [goNumber, setGoNumber] = useState('GO-2026-10-001');
-  const [mrpRun, setMrpRun] = useState('MRP-2026-10-01 (01-Oct-2026)');
-  const [goDate, setGoDate] = useState('2026-10-01');
-  const [requiredDate, setRequiredDate] = useState('2026-12-31');
-  const [plant, setPlant] = useState('Main Plant');
+  const notify = useNotify();
+
+  const [goDate, setGoDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [requiredDate, setRequiredDate] = useState('');
+  const [plant, setPlant] = useState('');
   const [notes, setNotes] = useState('');
 
+  const { data: runs = [] } = useListMrpRunsQuery();
+  const [selectedRunId, setSelectedRunId] = useState(null);
+  useEffect(() => { if (!selectedRunId && runs.length > 0) setSelectedRunId(runs[0].id); }, [runs, selectedRunId]);
+
+  const [runMrp, { isLoading: running }] = useRunMrpMutation();
+  const { data: run, isLoading: loadingRun } = useGetMrpRunQuery(selectedRunId, { skip: !selectedRunId });
+  const requirements = run?.requirements || [];
+
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState(() => new Set(['FG-1001', 'FG-1002', 'FG-1003', 'FG-1004']));
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
-  const [activeItem, setActiveItem] = useState('FG-1001');
+  const [selected, setSelected] = useState(() => new Set());
+  const [activeItem, setActiveItem] = useState(null);
   const [panelTab, setPanelTab] = useState('bom');
   const [expanded, setExpanded] = useState('routing');
 
-  const rows = REQUIREMENTS.filter((r) => {
+  const [fetchDetail, { data: detail, isFetching: loadingDetail }] = useLazyGetMrpItemDetailQuery();
+  useEffect(() => {
+    if (activeItem && selectedRunId) fetchDetail({ runId: selectedRunId, productCode: activeItem });
+  }, [activeItem, selectedRunId, fetchDetail]);
+
+  const [createGo, { isLoading: creatingGo }] = useCreateGenerationOrderMutation();
+
+  const rows = requirements.filter((r) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
-    return r.code.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q);
+    return r.productCode.toLowerCase().includes(q) || (r.productName || '').toLowerCase().includes(q);
   });
 
-  const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.code));
+  useEffect(() => {
+    if (!activeItem && rows.length > 0) setActiveItem(rows[0].productCode);
+  }, [rows, activeItem]);
+
+  const eligibleRows = rows.filter((r) => Number(r.netToGenerate) > 0 && r.suggestedOrderType !== 'Unclassified' && !r.coveredByGoNo);
+  const allSelected = eligibleRows.length > 0 && eligibleRows.every((r) => selected.has(r.productCode));
   const toggleAll = () => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (allSelected) rows.forEach((r) => next.delete(r.code));
-      else rows.forEach((r) => next.add(r.code));
+      if (allSelected) eligibleRows.forEach((r) => next.delete(r.productCode));
+      else eligibleRows.forEach((r) => next.add(r.productCode));
       return next;
     });
   };
@@ -160,15 +116,87 @@ export default function GenerateOrderMrp() {
     });
   };
 
+  const summary = {
+    total: requirements.length,
+    covered: requirements.filter((r) => Number(r.netToGenerate) <= 0).length,
+    inProgress: requirements.filter((r) => Number(r.inProgressQty) > 0).length,
+    net: requirements.reduce((s, r) => s + Number(r.netToGenerate || 0), 0),
+  };
+
+  const selectedRows = requirements.filter((r) => selected.has(r.productCode));
+  const previewCards = useMemo(() => {
+    const groups = { production: { items: 0, qty: 0 }, purchase: { items: 0, qty: 0 } };
+    selectedRows.forEach((r) => {
+      const key = r.suggestedOrderType === 'Production' ? 'production' : r.suggestedOrderType === 'Purchase' ? 'purchase' : null;
+      if (!key) return;
+      groups[key].items += 1;
+      groups[key].qty += Number(r.netToGenerate || 0);
+    });
+    return [
+      { key: 'production', label: 'Production Orders', icon: PrecisionManufacturingIcon, color: 'info', ...groups.production },
+      { key: 'purchase', label: 'Purchase Orders', icon: ShoppingCartIcon, color: 'warning', ...groups.purchase },
+      { key: 'subcontracting', label: 'Subcontracting Orders', icon: GroupsIcon, color: 'secondary', items: 0, qty: 0, disabled: true },
+      { key: 'jobwork', label: 'Job Work Orders', icon: BuildIcon, color: 'success', items: 0, qty: 0, disabled: true },
+    ];
+  }, [selectedRows]);
+
+  const handleRunMrp = async () => {
+    try {
+      const result = await runMrp({
+        horizonFromMonth: monthStr(0),
+        horizonToMonth: monthStr(5),
+        plant: plant || null,
+      }).unwrap();
+      setSelectedRunId(result.id);
+      setSelected(new Set());
+      notify.success(`MRP run ${result.runCode} completed — ${result.requirements.length} item(s) with open demand`);
+    } catch (err) {
+      notify.error(err?.data?.message || 'Could not run MRP');
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (selectedRows.length === 0) {
+      notify.error('Select at least one item first');
+      return;
+    }
+    const unclassified = selectedRows.filter((r) => r.suggestedOrderType === 'Unclassified');
+    if (unclassified.length > 0) {
+      notify.error(`${unclassified[0].productCode} has no active BOM and no default supplier — remove it or fix its master data first`);
+      return;
+    }
+    try {
+      const go = await createGo({
+        sourceType: 'MRP',
+        sourceRunId: selectedRunId,
+        goDate,
+        requiredDeliveryDate: requiredDate || null,
+        plant: plant || null,
+        notes,
+        lines: selectedRows.map((r) => ({
+          productCode: r.productCode,
+          productName: r.productName,
+          uom: r.uom,
+          requiredQty: r.netToGenerate,
+          orderQty: r.netToGenerate,
+          orderType: r.suggestedOrderType,
+          dueDate: r.requiredDate,
+        })),
+      }).unwrap();
+      navigate(`/production-planning/order-generation-option?goId=${go.id}`);
+    } catch (err) {
+      notify.error(err?.data?.message || 'Could not create Generation Order');
+    }
+  };
+
   return (
     <Box>
       <EntityHeaderCard
         icon={<SettingsIcon />}
         title="Generate Order"
-        subtitle="Create Production, Purchase, Subcontracting and Job Work orders from MRP, Manual selection, Sales Order, Forecast or Project."
+        subtitle="Create Production and Purchase Orders from MRP, Manual selection, Sales Order or Forecast. (Subcontracting and Job Work order generation are not available yet.)"
       />
 
-      {/* Method selector */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
         {METHODS.map((m) => {
           const Icon = m.icon;
@@ -177,42 +205,19 @@ export default function GenerateOrderMrp() {
             <Grid item xs={12} sm={6} md={2.4} key={m.key}>
               <Card
                 variant="outlined"
-                onClick={() => !active && navigate(m.path)}
+                onClick={() => !active && !m.disabled && navigate(m.path)}
                 sx={{
-                  cursor: active ? 'default' : 'pointer', height: '100%',
+                  cursor: active || m.disabled ? 'default' : 'pointer', height: '100%', opacity: m.disabled ? 0.6 : 1,
                   borderColor: active ? 'warning.main' : 'divider', borderWidth: active ? 2 : 1,
                   bgcolor: active ? 'rgba(255, 152, 0, 0.06)' : 'background.paper',
                 }}
               >
                 <CardContent>
                   <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
-                    <Avatar sx={{ bgcolor: m.color, width: 40, height: 40 }}>
-                      <Icon fontSize="small" />
-                    </Avatar>
-                    <Box
-                      sx={{
-                        width: 18, height: 18, borderRadius: '50%', border: '2px solid',
-                        borderColor: active ? 'warning.main' : 'divider',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      {active && <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: 'warning.main' }} />}
-                    </Box>
+                    <Avatar sx={{ bgcolor: m.color, width: 40, height: 40 }}><Icon fontSize="small" /></Avatar>
                   </Stack>
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mt: 1 }}>{m.label}</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', minHeight: 32 }}>
-                    {m.desc}
-                  </Typography>
-                  <Stack direction="row" spacing={2.5} sx={{ mt: 1 }}>
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight={700}>{m.a.value}</Typography>
-                      <Typography variant="caption" color="text.secondary">{m.a.label}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight={700}>{m.b.value}</Typography>
-                      <Typography variant="caption" color="text.secondary">{m.b.label}</Typography>
-                    </Box>
-                  </Stack>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', minHeight: 32 }}>{m.desc}</Typography>
                 </CardContent>
               </Card>
             </Grid>
@@ -220,61 +225,32 @@ export default function GenerateOrderMrp() {
         })}
       </Grid>
 
-      {/* Step 1 */}
       <Card variant="outlined" sx={{ mb: 2 }}>
         <CardContent>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5 }}>
-            Step 1: MRP Selection &amp; GO Details
-          </Typography>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5 }}>Step 1: MRP Selection &amp; GO Details</Typography>
           <Grid container spacing={2.5}>
-            <Grid item xs={12} sm={6} md={2.4}>
-              <Stack direction="row" spacing={0.5}>
-                <TextField
-                  fullWidth size="small" label="GO Number" required
-                  value={goNumber} onChange={(e) => setGoNumber(e.target.value)}
-                />
-                <IconButton size="small" sx={{ border: '1px solid', borderColor: 'divider', alignSelf: 'center' }}>
-                  <SettingsIcon fontSize="small" />
-                </IconButton>
-              </Stack>
-            </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
+            <Grid item xs={12} sm={6} md={3}>
               <TextField
-                fullWidth size="small" select label="MRP Run" required
-                value={mrpRun} onChange={(e) => setMrpRun(e.target.value)}
+                fullWidth size="small" select label="MRP Run"
+                value={selectedRunId || ''} onChange={(e) => { setSelectedRunId(Number(e.target.value)); setSelected(new Set()); }}
               >
-                <MenuItem value="MRP-2026-10-01 (01-Oct-2026)">MRP-2026-10-01 (01-Oct-2026)</MenuItem>
-                <MenuItem value="MRP-2026-09-01 (01-Sep-2026)">MRP-2026-09-01 (01-Sep-2026)</MenuItem>
+                {runs.map((r) => <MenuItem key={r.id} value={r.id}>{r.runCode} ({new Date(r.runDate).toLocaleDateString('en-GB')})</MenuItem>)}
+                {runs.length === 0 && <MenuItem value="" disabled>No MRP runs yet — click Run MRP</MenuItem>}
               </TextField>
             </Grid>
-            <Grid item xs={12} sm={6} md={2.4}>
-              <TextField
-                fullWidth size="small" type="date" label="GO Date" required
-                value={goDate} onChange={(e) => setGoDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
+            <Grid item xs={12} sm={6} md={2}>
+              <Button fullWidth variant="outlined" startIcon={running ? <CircularProgress size={16} /> : <RefreshIcon />} onClick={handleRunMrp} disabled={running}>
+                Run MRP
+              </Button>
             </Grid>
             <Grid item xs={12} sm={6} md={2.4}>
-              <TextField
-                fullWidth size="small" type="date" label="Required Delivery Date"
-                value={requiredDate} onChange={(e) => setRequiredDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
+              <TextField fullWidth size="small" type="date" label="GO Date" value={goDate} onChange={(e) => setGoDate(e.target.value)} InputLabelProps={{ shrink: true }} />
             </Grid>
-            <Grid item xs={12} sm={6} md={1.2}>
-              <TextField
-                fullWidth size="small" select label="Plant / Location"
-                value={plant} onChange={(e) => setPlant(e.target.value)}
-              >
-                <MenuItem value="Main Plant">Main Plant</MenuItem>
-                <MenuItem value="Plant 2">Plant 2</MenuItem>
-              </TextField>
+            <Grid item xs={12} sm={6} md={2.4}>
+              <TextField fullWidth size="small" type="date" label="Required Delivery Date" value={requiredDate} onChange={(e) => setRequiredDate(e.target.value)} InputLabelProps={{ shrink: true }} />
             </Grid>
-            <Grid item xs={12} sm={6} md={1.2}>
-              <TextField
-                fullWidth size="small" label="Notes" placeholder="Enter remarks..."
-                value={notes} onChange={(e) => setNotes(e.target.value)}
-              />
+            <Grid item xs={12} sm={6} md={2.2}>
+              <TextField fullWidth size="small" label="Plant / Location" value={plant} onChange={(e) => setPlant(e.target.value)} placeholder="Main Plant" />
             </Grid>
           </Grid>
 
@@ -284,8 +260,13 @@ export default function GenerateOrderMrp() {
                 <CardContent>
                   <Typography variant="body2" fontWeight={700} sx={{ mb: 1.5 }}>MRP Summary (for selected run)</Typography>
                   <Grid container spacing={2}>
-                    {MRP_SUMMARY.map((s) => (
-                      <Grid item xs={6} sm={2.4} key={s.label}>
+                    {[
+                      { label: 'Total Requirements', value: summary.total, color: 'text.primary' },
+                      { label: 'Already Covered', value: summary.covered, color: 'success.main' },
+                      { label: 'In Progress', value: summary.inProgress, color: 'warning.main' },
+                      { label: 'Net to Generate (qty)', value: numberFmt(summary.net), color: 'primary.main' },
+                    ].map((s) => (
+                      <Grid item xs={6} sm={3} key={s.label}>
                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{s.label}</Typography>
                         <Typography variant="h6" fontWeight={700} color={s.color}>{s.value}</Typography>
                       </Grid>
@@ -297,12 +278,12 @@ export default function GenerateOrderMrp() {
             <Grid item xs={12} md={4}>
               <Card variant="outlined" sx={{ height: '100%', bgcolor: 'rgba(76, 175, 80, 0.06)', borderColor: 'success.light' }}>
                 <CardContent>
-                  <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>What will be considered?</Typography>
+                  <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>What is considered?</Typography>
                   <Stack spacing={0.75}>
                     {[
-                      'Considers current stock, reserved stock and open receipts',
-                      'Considers existing Production / Purchase / Subcontracting / Job Work orders',
-                      'Considers planned lead time and due date',
+                      'Open Sales Order quantity and saved Forecast Plan demand',
+                      'Current on-hand stock, open Purchase Orders and open Production Orders',
+                      'No stock is reserved and no inventory is changed by this screen',
                     ].map((t) => (
                       <Stack key={t} direction="row" spacing={1} alignItems="flex-start">
                         <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main', mt: 0.25 }} />
@@ -317,229 +298,184 @@ export default function GenerateOrderMrp() {
         </CardContent>
       </Card>
 
-      {/* Step 2 */}
       <Card variant="outlined" sx={{ mb: 2 }}>
-        <Stack
-          direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1.5}
-          sx={{ px: 3, pt: 2.5, pb: 1.5 }}
-        >
+        <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1.5} sx={{ px: 3, pt: 2.5, pb: 1.5 }}>
           <Stack direction="row" alignItems="center" spacing={1.25}>
             <Typography variant="subtitle1" fontWeight={700}>Step 2: MRP Planned Requirements (Net to Generate)</Typography>
-            <Chip size="small" label={MRP_SUMMARY[4].value} color="primary" />
-          </Stack>
-          <Stack direction="row" alignItems="center" spacing={1.5} flexWrap="wrap" useFlexGap>
-            <Button variant="outlined" size="small" startIcon={<VisibilityOutlinedIcon />}>View MRP Details</Button>
-            <Button variant="outlined" size="small" startIcon={<FileDownloadOutlinedIcon />}>Export</Button>
+            <Chip size="small" label={eligibleRows.length} color="primary" />
           </Stack>
         </Stack>
 
         <Grid container>
           <Grid item xs={12} md={8} lg={8.5}>
             <Stack direction="row" alignItems="center" spacing={1.5} sx={{ px: 3, pb: 1.5 }} flexWrap="wrap" useFlexGap>
-              <Checkbox size="small" checked={allSelected} onChange={toggleAll} />
-              <Typography variant="body2" color="text.secondary">Select All</Typography>
+              <Checkbox size="small" checked={allSelected} onChange={toggleAll} disabled={eligibleRows.length === 0} />
+              <Typography variant="body2" color="text.secondary">Select All Eligible</Typography>
               <TextField
-                size="small"
-                placeholder="Search item, FG code or description..."
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-                sx={{ minWidth: 260, ml: 'auto' }}
+                size="small" placeholder="Search item code or description..." value={search}
+                onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 260, ml: 'auto' }}
                 InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
               />
-              <IconButton size="small" sx={{ border: '1px solid', borderColor: 'divider' }}>
-                <FilterAltOutlinedIcon fontSize="small" />
-              </IconButton>
             </Stack>
 
-            <ScrollableTableContainer maxHeight="clamp(240px, calc(100vh - 560px), 420px)">
-              <Table size="small" stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell padding="checkbox" />
-                    <TableCell>S.No</TableCell>
-                    <TableCell>FG Item Code</TableCell>
-                    <TableCell>FG Description</TableCell>
-                    <TableCell align="right">MRP Req. Qty</TableCell>
-                    <TableCell align="right">Already Covered</TableCell>
-                    <TableCell align="right">In Progress</TableCell>
-                    <TableCell align="right">On Hold</TableCell>
-                    <TableCell align="right">Net Qty to Generate</TableCell>
-                    <TableCell>UOM</TableCell>
-                    <TableCell>Required Date</TableCell>
-                    <TableCell>Suggested Order Type</TableCell>
-                    <TableCell>Action</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {rows.map((r, idx) => (
-                    <TableRow
-                      key={r.code} hover selected={activeItem === r.code}
-                      onClick={() => setActiveItem(r.code)}
-                      sx={{ cursor: 'pointer' }}
-                    >
-                      <TableCell padding="checkbox">
-                        <Checkbox size="small" checked={selected.has(r.code)} onClick={(e) => e.stopPropagation()} onChange={() => toggleRow(r.code)} />
-                      </TableCell>
-                      <TableCell>{idx + 1}</TableCell>
-                      <TableCell><Typography variant="body2" color="primary.main" fontWeight={600}>{r.code}</Typography></TableCell>
-                      <TableCell>{r.desc}</TableCell>
-                      <TableCell align="right">{numberFmt(r.mrpReq)}</TableCell>
-                      <TableCell align="right">{numberFmt(r.covered)}</TableCell>
-                      <TableCell align="right">{numberFmt(r.inProgress)}</TableCell>
-                      <TableCell align="right">{numberFmt(r.onHold)}</TableCell>
-                      <TableCell align="right"><Typography variant="body2" color="primary.main" fontWeight={700}>{numberFmt(r.net)}</Typography></TableCell>
-                      <TableCell>{r.uom}</TableCell>
-                      <TableCell>{r.date}</TableCell>
-                      <TableCell>
-                        <Chip size="small" label={r.orderType} color={ORDER_TYPE_META[r.orderType]?.color || 'default'} variant="outlined" />
-                      </TableCell>
-                      <TableCell>
-                        <Button size="small" endIcon={<KeyboardArrowDownIcon />}>View</Button>
-                      </TableCell>
+            {loadingRun ? (
+              <Box sx={{ py: 4, textAlign: 'center' }}><CircularProgress size={28} /></Box>
+            ) : rows.length === 0 ? (
+              <Box sx={{ py: 4, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  {runs.length === 0 ? 'No MRP run yet — click "Run MRP" above.' : 'This run found no open demand.'}
+                </Typography>
+              </Box>
+            ) : (
+              <ScrollableTableContainer maxHeight="clamp(240px, calc(100vh - 560px), 420px)">
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell padding="checkbox" />
+                      <TableCell>S.No</TableCell>
+                      <TableCell>FG Item Code</TableCell>
+                      <TableCell>FG Description</TableCell>
+                      <TableCell align="right">MRP Req. Qty</TableCell>
+                      <TableCell align="right">Already Covered</TableCell>
+                      <TableCell align="right">In Progress</TableCell>
+                      <TableCell align="right">Net Qty to Generate</TableCell>
+                      <TableCell>UOM</TableCell>
+                      <TableCell>Required Date</TableCell>
+                      <TableCell>Suggested Order Type</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollableTableContainer>
-
-            <EntityListPagination
-              total={TOTAL_REQUIREMENT_RECORDS}
-              page={page}
-              onChange={setPage}
-              pageSize={pageSize}
-              onPageSizeChange={(size) => { setPageSize(size); setPage(0); }}
-            />
+                  </TableHead>
+                  <TableBody>
+                    {rows.map((r, idx) => {
+                      const eligible = Number(r.netToGenerate) > 0 && r.suggestedOrderType !== 'Unclassified' && !r.coveredByGoNo;
+                      return (
+                        <TableRow
+                          key={r.productCode} hover selected={activeItem === r.productCode}
+                          onClick={() => setActiveItem(r.productCode)} sx={{ cursor: 'pointer' }}
+                        >
+                          <TableCell padding="checkbox">
+                            <Checkbox size="small" disabled={!eligible} checked={selected.has(r.productCode)} onClick={(e) => e.stopPropagation()} onChange={() => toggleRow(r.productCode)} />
+                          </TableCell>
+                          <TableCell>{idx + 1}</TableCell>
+                          <TableCell><Typography variant="body2" color="primary.main" fontWeight={600}>{r.productCode}</Typography></TableCell>
+                          <TableCell>{r.productName || '-'}</TableCell>
+                          <TableCell align="right">{numberFmt(r.grossRequirement)}</TableCell>
+                          <TableCell align="right">{numberFmt(r.availableQty)}</TableCell>
+                          <TableCell align="right">{numberFmt(r.inProgressQty)}</TableCell>
+                          <TableCell align="right"><Typography variant="body2" color="primary.main" fontWeight={700}>{numberFmt(r.netToGenerate)}</Typography></TableCell>
+                          <TableCell>{r.uom || '-'}</TableCell>
+                          <TableCell>{r.requiredDate ? new Date(r.requiredDate).toLocaleDateString('en-GB') : '-'}</TableCell>
+                          <TableCell>
+                            {r.coveredByGoNo ? (
+                              <Chip size="small" label={`Covered by ${r.coveredByGoNo}`} variant="outlined" />
+                            ) : (
+                              <Chip size="small" label={ORDER_TYPE_META[r.suggestedOrderType]?.label || r.suggestedOrderType} color={ORDER_TYPE_META[r.suggestedOrderType]?.color || 'default'} variant="outlined" />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </ScrollableTableContainer>
+            )}
           </Grid>
 
-          {/* Item Details side panel */}
           <Grid item xs={12} md={4} lg={3.5}>
             <Box sx={{ p: 2.5, borderLeft: { md: '1px solid' }, borderColor: 'divider', height: '100%' }}>
               <Typography variant="body2" fontWeight={700} sx={{ mb: 1.5 }}>
                 Item Details ({selected.size} item{selected.size === 1 ? '' : 's'} selected)
               </Typography>
 
-              <Stack direction="row" spacing={1.5} sx={{ mb: 1.5 }}>
-                <Avatar variant="rounded" sx={{ width: 48, height: 48, bgcolor: 'action.hover' }}>
-                  <PrecisionManufacturingIcon color="disabled" />
-                </Avatar>
-                <Box>
-                  <Typography variant="body2" fontWeight={700}>{SELECTED_ITEM.code} - {SELECTED_ITEM.name}</Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                    UOM: {SELECTED_ITEM.uom} &nbsp;|&nbsp; Net Qty to Generate: {numberFmt(SELECTED_ITEM.netQty)}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">Required Date: {SELECTED_ITEM.requiredDate}</Typography>
-                </Box>
-              </Stack>
-
-              <ToggleButtonGroup
-                size="small" exclusive fullWidth value={panelTab}
-                onChange={(e, v) => v && setPanelTab(v)}
-                sx={{ mb: 1.5 }}
-              >
-                <ToggleButton value="bom">BOM &amp; Routing</ToggleButton>
-                <ToggleButton value="status">Current Status</ToggleButton>
-              </ToggleButtonGroup>
-
-              {panelTab === 'bom' ? (
-                <>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                    BOM ({BOM_TOTAL_COMPONENTS} Components)
-                  </Typography>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>S.No</TableCell>
-                        <TableCell>Component</TableCell>
-                        <TableCell align="right">Req. Qty</TableCell>
-                        <TableCell>Type</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {BOM_COMPONENTS.map((c, idx) => (
-                        <TableRow key={c.code}>
-                          <TableCell>{idx + 1}</TableCell>
-                          <TableCell>
-                            <Typography variant="caption" fontWeight={600}>{c.code}</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{c.desc}</Typography>
-                          </TableCell>
-                          <TableCell align="right">{c.reqQty.toFixed(2)}</TableCell>
-                          <TableCell>
-                            <Chip size="small" label={c.type} color={PROCUREMENT_TYPE_COLOR[c.type]} />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  <Typography variant="caption" color="primary.main" fontWeight={600} sx={{ display: 'block', mt: 1, cursor: 'pointer' }}>
-                    View all components ({BOM_TOTAL_COMPONENTS}) →
-                  </Typography>
-
-                  {[
-                    { key: 'routing', title: 'Routing (5 Operations)', link: 'View Routing' },
-                    { key: 'stock', title: 'Stock Availability' },
-                    { key: 'orders', title: 'Existing Orders & Reservations' },
-                    { key: 'netreq', title: 'Net Requirement Calculation' },
-                  ].map((section) => (
-                    <Accordion
-                      key={section.key} disableGutters square
-                      expanded={expanded === section.key}
-                      onChange={() => setExpanded(expanded === section.key ? '' : section.key)}
-                      sx={{ mt: 1, border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}
-                    >
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 40 }}>
-                        <Typography variant="caption" fontWeight={700}>{section.title}</Typography>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Typography variant="caption" color="text.secondary">
-                          {section.link
-                            ? <>5 operations across 3 work centers. </>
-                            : 'No further detail in this preview.'}
-                        </Typography>
-                        {section.link && (
-                          <Typography variant="caption" color="primary.main" fontWeight={600} sx={{ display: 'block', mt: 0.5, cursor: 'pointer' }}>
-                            {section.link} →
-                          </Typography>
-                        )}
-                      </AccordionDetails>
-                    </Accordion>
-                  ))}
-                </>
+              {!activeItem ? (
+                <Typography variant="caption" color="text.secondary">Select a row to see its BOM and Routing.</Typography>
               ) : (
-                <Typography variant="caption" color="text.secondary">
-                  No open Production/Purchase/Subcontracting/Job Work orders for this item.
-                </Typography>
+                <>
+                  <Stack direction="row" spacing={1.5} sx={{ mb: 1.5 }}>
+                    <Avatar variant="rounded" sx={{ width: 48, height: 48, bgcolor: 'action.hover' }}>
+                      <PrecisionManufacturingIcon color="disabled" />
+                    </Avatar>
+                    <Box>
+                      <Typography variant="body2" fontWeight={700}>{activeItem}</Typography>
+                    </Box>
+                  </Stack>
+
+                  <ToggleButtonGroup size="small" exclusive fullWidth value={panelTab} onChange={(e, v) => v && setPanelTab(v)} sx={{ mb: 1.5 }}>
+                    <ToggleButton value="bom">BOM &amp; Routing</ToggleButton>
+                  </ToggleButtonGroup>
+
+                  {loadingDetail ? (
+                    <Box sx={{ py: 2, textAlign: 'center' }}><CircularProgress size={22} /></Box>
+                  ) : !detail?.bom ? (
+                    <Typography variant="caption" color="text.secondary">No active BOM for this item — it will generate as a Purchase Order, if it has a default supplier.</Typography>
+                  ) : (
+                    <>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        BOM {detail.bom.bomCode} ({detail.bom.components.length} Components)
+                      </Typography>
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow><TableCell>Component</TableCell><TableCell align="right">Qty/Unit</TableCell><TableCell>Type</TableCell></TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {detail.bom.components.map((c) => (
+                            <TableRow key={c.componentProductCode}>
+                              <TableCell>
+                                <Typography variant="caption" fontWeight={600}>{c.componentProductCode}</Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{c.componentProductName}</Typography>
+                              </TableCell>
+                              <TableCell align="right">{Number(c.quantityPer).toFixed(2)}</TableCell>
+                              <TableCell><Chip size="small" label={c.type} color={c.type === 'Make' ? 'success' : c.type === 'Buy' ? 'warning' : 'default'} /></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+
+                      <Accordion disableGutters square expanded={expanded === 'routing'} onChange={() => setExpanded(expanded === 'routing' ? '' : 'routing')} sx={{ mt: 1, border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' } }}>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 40 }}>
+                          <Typography variant="caption" fontWeight={700}>
+                            Routing {detail.routing ? `(${detail.routing.operations.length} Operations)` : '(none)'}
+                          </Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          {detail.routing ? (
+                            <Stack spacing={0.5}>
+                              {detail.routing.operations.map((op) => (
+                                <Typography key={op.id} variant="caption" color="text.secondary">
+                                  {op.operationNo}. {op.operationName} {op.workCenterCode ? `— ${op.workCenterCode}` : ''}
+                                </Typography>
+                              ))}
+                            </Stack>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">No routing assigned to this product.</Typography>
+                          )}
+                        </AccordionDetails>
+                      </Accordion>
+                    </>
+                  )}
+                </>
               )}
             </Box>
           </Grid>
         </Grid>
       </Card>
 
-      {/* Step 3 */}
       <Card variant="outlined">
         <CardContent>
           <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5 }}>
             Step 3: Order Generation Preview ({selected.size} Item{selected.size === 1 ? '' : 's'} Selected)
           </Typography>
           <Grid container spacing={2}>
-            {ORDER_PREVIEW_CARDS.map((card) => {
+            {previewCards.map((card) => {
               const Icon = card.icon;
               return (
                 <Grid item xs={12} sm={6} md={3} key={card.key}>
-                  <Card variant="outlined" sx={{ height: '100%' }}>
+                  <Card variant="outlined" sx={{ height: '100%', opacity: card.disabled ? 0.6 : 1 }}>
                     <CardContent>
-                      <Avatar sx={{ bgcolor: `${card.color}.main`, width: 40, height: 40, mb: 1 }}>
-                        <Icon fontSize="small" />
-                      </Avatar>
-                      <Typography variant="subtitle2" fontWeight={700}>{card.label}</Typography>
+                      <Avatar sx={{ bgcolor: `${card.color}.main`, width: 40, height: 40, mb: 1 }}><Icon fontSize="small" /></Avatar>
+                      <Typography variant="subtitle2" fontWeight={700}>{card.label}{card.disabled ? ' (not available yet)' : ''}</Typography>
                       <Stack direction="row" spacing={3} sx={{ mt: 1 }}>
-                        <Box>
-                          <Typography variant="h6" fontWeight={700}>{card.items}</Typography>
-                          <Typography variant="caption" color="text.secondary">Items</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="h6" fontWeight={700}>{card.qty}</Typography>
-                          <Typography variant="caption" color="text.secondary">{card.unit}</Typography>
-                        </Box>
+                        <Box><Typography variant="h6" fontWeight={700}>{card.items}</Typography><Typography variant="caption" color="text.secondary">Items</Typography></Box>
+                        <Box><Typography variant="h6" fontWeight={700}>{numberFmt(card.qty)}</Typography><Typography variant="caption" color="text.secondary">Qty</Typography></Box>
                       </Stack>
                     </CardContent>
                   </Card>
@@ -549,17 +485,11 @@ export default function GenerateOrderMrp() {
           </Grid>
 
           <Stack direction="row" spacing={1.5} justifyContent="flex-end" sx={{ mt: 2.5 }} flexWrap="wrap" useFlexGap>
-            <Button variant="outlined" startIcon={<TuneIcon />} onClick={() => navigate('/production-planning/order-generation-option')}>
-              Order Generation Options
-            </Button>
-            <Button variant="outlined" startIcon={<VisibilityOutlinedIcon />} onClick={() => navigate('/production-planning/preview-order')}>
-              Preview Orders
-            </Button>
             <Button
-              variant="contained" color="warning" startIcon={<SettingsSuggestIcon />} endIcon={<KeyboardArrowDownIcon />}
-              onClick={() => navigate('/production-planning/generated-orders')}
+              variant="contained" color="warning" startIcon={creatingGo ? <CircularProgress size={16} color="inherit" /> : <SettingsSuggestIcon />}
+              onClick={handleGenerate} disabled={creatingGo || selected.size === 0}
             >
-              Generate Orders
+              Review &amp; Generate Orders
             </Button>
           </Stack>
         </CardContent>

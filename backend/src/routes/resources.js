@@ -24463,3 +24463,10 @@ module.exports.buildAvailableBalanceReportData = buildAvailableBalanceReportData
 // post a Request-linked Stock Transfer's stock/G/L the moment its Stock
 // Transfer Request is approved — see this function's own doc comment above.
 module.exports.syncStockTransferApprovalOnRequestApproved = syncStockTransferApprovalOnRequestApproved;
+// Exposed so the Phase 1 MRP/Generate Order feature can create a real
+// Purchase Order through this exact same logic — numbering, tax treatment,
+// totals, all of it — for every Generate Order line classified as a
+// Purchase Order, rather than re-implementing any of it. See
+// createPurchaseOrderRecord's own comment above and
+// services/mrpService.js's generateOrders().
+module.exports.createPurchaseOrderRecord = createPurchaseOrderRecord;

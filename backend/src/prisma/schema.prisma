@@ -4114,3 +4114,106 @@ model ProductionOrderOperation {
   @@index([orderId], map: "IX_ProdOrderOperation_OrderId")
   @@map("production_order_operations")
 }
+
+// --- Phase 1: MRP & Order Generation -------------------------------------
+// Explicitly approved scope: real Production Orders and Purchase Orders
+// only (no Subcontracting/Job Work document type exists anywhere in this
+// schema — out of scope here, see GenerationOrderLine.orderType). Purely
+// additive: 4 new tables, nothing above this line is altered. MRP itself
+// never writes to Stock or posts to the G/L — it only reads existing
+// stock/open-order data (see utils/productInventory.js, reused as-is) and,
+// on "Generate Orders", creates ordinary ProductionOrder/PurchaseOrder rows
+// through their own existing, unmodified creation logic.
+model ProductionMrpRun {
+  id                Int                      @id @default(autoincrement())
+  runCode           String                   @unique @map("run_code") @db.NVarChar(50)
+  runDate           DateTime                 @default(now(), map: "DF_production_mrp_runs_run_date") @map("run_date")
+  horizonFromMonth  String?                  @map("horizon_from_month") @db.NVarChar(7)
+  horizonToMonth    String?                  @map("horizon_to_month") @db.NVarChar(7)
+  plant             String?                  @db.NVarChar(150)
+  status            String                   @default("N'Draft'", map: "DF_production_mrp_runs_status") @map("status") @db.NVarChar(20)
+  createdById       Int?                     @map("created_by_id")
+  createdByName     String?                  @map("created_by_name") @db.NVarChar(100)
+  createdAt         DateTime                 @default(now(), map: "DF_production_mrp_runs_created_at") @map("created_at")
+  requirements      ProductionMrpRequirement[]
+
+  @@map("production_mrp_runs")
+}
+
+// One row per finished-good item considered by an MRP run. coveredByGoNo is
+// stamped once a GenerationOrder is actually generated from this
+// requirement, so a later MRP run can tell this item's net requirement has
+// already been actioned rather than re-offering the same quantity again —
+// the duplicate-prevention control for repeated MRP runs.
+model ProductionMrpRequirement {
+  id                 Int               @id @default(autoincrement())
+  runId              Int               @map("run_id")
+  productCode        String            @map("product_code") @db.NVarChar(50)
+  productName        String?           @map("product_name") @db.NVarChar(150)
+  uom                String?           @db.NVarChar(50)
+  grossRequirement   Decimal           @default(0, map: "DF_production_mrp_requirements_gross_requirement") @map("gross_requirement") @db.Decimal(15, 2)
+  availableQty       Decimal           @default(0, map: "DF_production_mrp_requirements_available_qty") @map("available_qty") @db.Decimal(15, 2)
+  inProgressQty      Decimal           @default(0, map: "DF_production_mrp_requirements_in_progress_qty") @map("in_progress_qty") @db.Decimal(15, 2)
+  onHoldQty          Decimal           @default(0, map: "DF_production_mrp_requirements_on_hold_qty") @map("on_hold_qty") @db.Decimal(15, 2)
+  netToGenerate      Decimal           @default(0, map: "DF_production_mrp_requirements_net_to_generate") @map("net_to_generate") @db.Decimal(15, 2)
+  requiredDate       DateTime?         @map("required_date") @db.Date
+  suggestedOrderType String?           @map("suggested_order_type") @db.NVarChar(20)
+  coveredByGoNo      String?           @map("covered_by_go_no") @db.NVarChar(50)
+  run                ProductionMrpRun? @relation(fields: [runId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([runId], map: "IX_ProdMrpRequirement_RunId")
+  @@index([productCode], map: "IX_ProdMrpRequirement_ProductCode")
+  @@map("production_mrp_requirements")
+}
+
+// A "Generate Order" (GO) — the batch that Generate Order - MRP/Manual/
+// Sales Order/Forecast/Project all produce, and that Order Generation
+// Option edits before the user commits it. Mirrors ProductionOrder's own
+// already-reserved sourceType/baseType/baseNo convention (see that model's
+// header comment): every real ProductionOrder/PurchaseOrder this feature
+// creates stamps baseType='GenerationOrder', baseNo=<goNumber>.
+model ProductionGenerationOrder {
+  id                   Int                           @id @default(autoincrement())
+  goNumber             String                        @unique @map("go_number") @db.NVarChar(50)
+  sourceType           String                        @map("source_type") @db.NVarChar(20)
+  sourceRunId          Int?                           @map("source_run_id")
+  sourceForecastPlanId Int?                           @map("source_forecast_plan_id")
+  goDate               DateTime?                     @map("go_date") @db.Date
+  requiredDeliveryDate DateTime?                     @map("required_delivery_date") @db.Date
+  plant                String?                       @db.NVarChar(150)
+  notes                String?                       @db.NVarChar(Max)
+  status               String                        @default("N'Draft'", map: "DF_production_generation_orders_status") @map("status") @db.NVarChar(20)
+  createdById          Int?                          @map("created_by_id")
+  createdByName        String?                       @map("created_by_name") @db.NVarChar(100)
+  createdAt            DateTime                      @default(now(), map: "DF_production_generation_orders_created_at") @map("created_at")
+  updatedAt            DateTime                      @updatedAt @map("updated_at")
+  lines                ProductionGenerationOrderLine[]
+
+  @@map("production_generation_orders")
+}
+
+model ProductionGenerationOrderLine {
+  id              Int                        @id @default(autoincrement())
+  goId            Int                        @map("go_id")
+  productCode     String                     @map("product_code") @db.NVarChar(50)
+  productName     String?                    @map("product_name") @db.NVarChar(150)
+  uom             String?                    @db.NVarChar(50)
+  requiredQty     Decimal                    @default(0, map: "DF_production_generation_order_lines_required_qty") @map("required_qty") @db.Decimal(15, 2)
+  orderQty        Decimal                    @default(0, map: "DF_production_generation_order_lines_order_qty") @map("order_qty") @db.Decimal(15, 2)
+  // 'Production' | 'Purchase' only in Phase 1 — see this file's header
+  // comment on Subcontracting/Job Work being out of scope.
+  orderType       String                     @map("order_type") @db.NVarChar(20)
+  plannedStartDate DateTime?                 @map("planned_start_date") @db.Date
+  dueDate         DateTime?                  @map("due_date") @db.Date
+  priority        String                     @default("N'Normal'", map: "DF_production_generation_order_lines_priority") @map("priority") @db.NVarChar(20)
+  vendorCode      String?                    @map("vendor_code") @db.NVarChar(150)
+  warehouse       String?                    @db.NVarChar(150)
+  branch          String?                    @db.NVarChar(150)
+  resultOrderType String?                    @map("result_order_type") @db.NVarChar(20)
+  resultOrderId   Int?                       @map("result_order_id")
+  resultOrderNo   String?                    @map("result_order_no") @db.NVarChar(50)
+  go              ProductionGenerationOrder? @relation(fields: [goId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([goId], map: "IX_ProdGenOrderLine_GoId")
+  @@map("production_generation_order_lines")
+}

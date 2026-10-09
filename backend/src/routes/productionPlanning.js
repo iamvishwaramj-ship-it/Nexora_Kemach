@@ -8,6 +8,7 @@ const prisma = require('../prisma/client');
 const auth = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
 const { computeForecastRows, buildOrderSummary, parseMonth } = require('../services/forecastPlanService');
+const mrpService = require('../services/mrpService');
 
 function serializePlan(plan) {
   return {
@@ -235,6 +236,103 @@ router.get('/meta/item-categories', auth(), asyncHandler(async (req, res) => {
     orderBy: { productType: 'asc' },
   });
   res.json({ success: true, data: rows.map((r) => r.productType).filter(Boolean) });
+}));
+
+// ---------------------------------------------------------------------------
+// Production Planning > MRP & Order Generation — Phase 1, explicitly
+// approved scope (real Production/Purchase Orders only). All compute logic
+// lives in services/mrpService.js; these routes are thin wrappers, same
+// convention as the Forecast Plan routes above. Nothing here writes to
+// Stock or posts to the G/L — see mrpService.js's own header comment.
+
+// POST /api/production-planning/mrp-runs — runs the net-requirement
+// calculation and persists an MrpRun + its requirement rows.
+router.post('/mrp-runs', auth(), asyncHandler(async (req, res) => {
+  const { horizonFromMonth, horizonToMonth, plant, includeForecast } = req.body || {};
+  const run = await mrpService.runMrp({
+    horizonFromMonth, horizonToMonth, plant,
+    includeForecast: includeForecast !== false,
+    createdBy: req.user,
+  });
+  res.status(201).json({ success: true, data: run });
+}));
+
+// GET /api/production-planning/open-sales-order-lines — for Generate Order -
+// Sales Order: direct open-quantity conversion, no MRP netting.
+router.get('/open-sales-order-lines', auth(), asyncHandler(async (req, res) => {
+  const lines = await mrpService.listOpenSalesOrderLines();
+  res.json({ success: true, data: lines });
+}));
+
+// GET /api/production-planning/mrp-runs — list, for the "MRP Run" dropdown.
+router.get('/mrp-runs', auth(), asyncHandler(async (req, res) => {
+  const runs = await prisma.productionMrpRun.findMany({ orderBy: { runDate: 'desc' }, take: 50 });
+  res.json({ success: true, data: runs });
+}));
+
+// GET /api/production-planning/mrp-runs/:id — one run + its requirement rows.
+router.get('/mrp-runs/:id', auth(), asyncHandler(async (req, res) => {
+  const run = await mrpService.getMrpRun(req.params.id);
+  res.json({ success: true, data: run });
+}));
+
+// GET /api/production-planning/mrp-runs/:id/items/:productCode/detail — BOM
+// components + Routing operations for one item's side panel. :id is
+// accepted (and validated to exist) for URL symmetry with the run it was
+// selected from, but the detail itself is a live read, not a run-time
+// snapshot — a BOM/Routing edited after the run shows its current state.
+router.get('/mrp-runs/:id/items/:productCode/detail', auth(), asyncHandler(async (req, res) => {
+  await mrpService.getMrpRun(req.params.id); // 404s if the run doesn't exist
+  const detail = await mrpService.getItemDetail(req.params.productCode);
+  res.json({ success: true, data: detail });
+}));
+
+// GET /api/production-planning/items/:productCode/detail — same BOM/Routing
+// side-panel read as above, for an item-detail lookup with no MRP run in
+// context (Generate Order - Manual, which selects straight from Product
+// Master rather than an MRP run's requirement rows).
+router.get('/items/:productCode/detail', auth(), asyncHandler(async (req, res) => {
+  const detail = await mrpService.getItemDetail(req.params.productCode);
+  res.json({ success: true, data: detail });
+}));
+
+// POST /api/production-planning/generation-orders — creates a Draft
+// Generation Order from a selected set of items (any of the four
+// Generate Order entry screens, differentiated by sourceType).
+router.post('/generation-orders', auth(), asyncHandler(async (req, res) => {
+  const go = await mrpService.createGenerationOrder({ ...req.body, createdBy: req.user });
+  res.status(201).json({ success: true, data: go });
+}));
+
+// GET /api/production-planning/generation-orders/:id — full detail, for
+// Order Generation Option / Preview Order / Generated Orders.
+router.get('/generation-orders/:id', auth(), asyncHandler(async (req, res) => {
+  const go = await mrpService.getGenerationOrder(req.params.id);
+  res.json({ success: true, data: go });
+}));
+
+// PUT /api/production-planning/generation-orders/:id — Order Generation
+// Option's inline edits (quantity/date/priority/vendor). Blocked once
+// orders have already been generated — see mrpService.updateGenerationOrder.
+router.put('/generation-orders/:id', auth(), asyncHandler(async (req, res) => {
+  const go = await mrpService.updateGenerationOrder(req.params.id, req.body || {});
+  res.json({ success: true, data: go });
+}));
+
+// POST /api/production-planning/generation-orders/:id/generate — the real
+// "Generate Orders" action. Idempotent: rejects a Generation Order that has
+// already been generated (see mrpService.generateOrders's status guard).
+router.post('/generation-orders/:id/generate', auth(), asyncHandler(async (req, res) => {
+  const go = await mrpService.generateOrders(req.params.id, req.user);
+  res.json({ success: true, data: go });
+}));
+
+// GET /api/production-planning/dashboard-stats — the Production Planning
+// Dashboard's order-status/trend widgets, the subset backed by real data in
+// this phase (see mrpService.getDashboardStats's own comment).
+router.get('/dashboard-stats', auth(), asyncHandler(async (req, res) => {
+  const stats = await mrpService.getDashboardStats();
+  res.json({ success: true, data: stats });
 }));
 
 module.exports = router;

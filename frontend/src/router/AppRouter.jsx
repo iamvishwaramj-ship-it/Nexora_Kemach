@@ -177,6 +177,48 @@ const PEProductionClosure = lazy(() => import('../pages/productionPlanning/produ
 const PEReports = lazy(() => import('../pages/productionPlanning/productionExecution/Reports'));
 const PENotes = lazy(() => import('../pages/productionPlanning/productionExecution/Notes'));
 const PECreateRequisition = lazy(() => import('../pages/productionPlanning/productionExecution/CreateRequisition'));
+const PECreateReworkEntry = lazy(() => import('../pages/productionPlanning/productionExecution/CreateReworkEntry'));
+const PEProductionOrderReport = lazy(() => import('../pages/productionPlanning/productionExecution/ProductionOrderReport'));
+const PEMaterialConsumptionReport = lazy(() => import('../pages/productionPlanning/productionExecution/MaterialConsumptionReport'));
+const PEMaterialIssueReport = lazy(() => import('../pages/productionPlanning/productionExecution/MaterialIssueReport'));
+const PEReworkScrapReport = lazy(() => import('../pages/productionPlanning/productionExecution/ReworkScrapReport'));
+const PEProductionCloserReport = lazy(() => import('../pages/productionPlanning/productionExecution/ProductionCloserReport'));
+const PEWorkCenterPerformance = lazy(() => import('../pages/productionPlanning/productionExecution/WorkCenterPerformance'));
+const PEOperatorProductivity = lazy(() => import('../pages/productionPlanning/productionExecution/OperatorProductivity'));
+const PECostingReport = lazy(() => import('../pages/productionPlanning/productionExecution/CostingReport'));
+
+// Subcontracting -- its own top-level menu, sibling to Production Execution
+// (see navConfig.js's own comment on this node: the user clarified it
+// should be a standalone menu, not nested inside Production Execution).
+const SubcontractingDashboard = lazy(() => import('../pages/subcontracting/SubcontractingDashboard'));
+const SubcontractOrders = lazy(() => import('../pages/subcontracting/SubcontractOrders'));
+const NewSubcontractingOrder = lazy(() => import('../pages/subcontracting/NewSubcontractingOrder'));
+const MaterialIssueToSubcon = lazy(() => import('../pages/subcontracting/MaterialIssueToSubcon'));
+const SubconNewIssue = lazy(() => import('../pages/subcontracting/SubconNewIssue'));
+const SubcontractInward = lazy(() => import('../pages/subcontracting/SubcontractInward'));
+const SubconNewInward = lazy(() => import('../pages/subcontracting/SubconNewInward'));
+const SubconQualityInspection = lazy(() => import('../pages/subcontracting/SubconQualityInspection'));
+const SubconNewInspection = lazy(() => import('../pages/subcontracting/SubconNewInspection'));
+const SubcontractBills = lazy(() => import('../pages/subcontracting/SubcontractBills'));
+const SubconNewBill = lazy(() => import('../pages/subcontracting/SubconNewBill'));
+const SubcontractingReports = lazy(() => import('../pages/subcontracting/SubcontractingReports'));
+
+// Quality -- its own top-level menu, sibling to Subcontracting (see
+// navConfig.js's own comment on this node).
+const QualityDashboard = lazy(() => import('../pages/quality/QualityDashboard'));
+const InspectionPlanning = lazy(() => import('../pages/quality/InspectionPlanning'));
+const NewInspectionPlan = lazy(() => import('../pages/quality/NewInspectionPlan'));
+const IncomingInspection = lazy(() => import('../pages/quality/IncomingInspection'));
+const QualityNewInspection = lazy(() => import('../pages/quality/QualityNewInspection'));
+const InProcessInspection = lazy(() => import('../pages/quality/InProcessInspection'));
+const NewInProcessInspection = lazy(() => import('../pages/quality/NewInProcessInspection'));
+const FinalInspection = lazy(() => import('../pages/quality/FinalInspection'));
+const NewFinalInspection = lazy(() => import('../pages/quality/NewFinalInspection'));
+const NonConformance = lazy(() => import('../pages/quality/NonConformance'));
+const NewNCR = lazy(() => import('../pages/quality/NewNCR'));
+const CorrectiveAction = lazy(() => import('../pages/quality/CorrectiveAction'));
+const NewCAPA = lazy(() => import('../pages/quality/NewCAPA'));
+const QualityReport = lazy(() => import('../pages/quality/QualityReport'));
 
 // User Management
 const UserManagement = lazy(() => import('../pages/user/UserManagement'));
@@ -398,6 +440,53 @@ export default function AppRouter() {
             <Route path="reports" element={<PEReports />} />
             <Route path="notes" element={<PENotes />} />
             <Route path="create-requisition" element={<PECreateRequisition />} />
+            <Route path="create-rework-entry" element={<PECreateReworkEntry />} />
+            <Route path="production-order-report" element={<PEProductionOrderReport />} />
+            <Route path="material-consumption-report" element={<PEMaterialConsumptionReport />} />
+            <Route path="material-issue-report" element={<PEMaterialIssueReport />} />
+            <Route path="rework-scrap-report" element={<PEReworkScrapReport />} />
+            <Route path="production-closer-report" element={<PEProductionCloserReport />} />
+            <Route path="work-center-performance" element={<PEWorkCenterPerformance />} />
+            <Route path="operator-productivity" element={<PEOperatorProductivity />} />
+            <Route path="costing-report" element={<PECostingReport />} />
+          </Route>
+
+          {/* Subcontracting (own top-level menu, sibling to Production
+              Execution -- see navConfig.js's own comment on this node). */}
+          <Route path="subcontracting">
+            <Route index element={<SubMenuIndexPage navKey="subcontracting" />} />
+            <Route path="dashboard" element={<SubcontractingDashboard />} />
+            <Route path="subcontract-orders" element={<SubcontractOrders />} />
+            <Route path="new-subcontracting-order" element={<NewSubcontractingOrder />} />
+            <Route path="material-issue-to-subcon" element={<MaterialIssueToSubcon />} />
+            <Route path="new-issue" element={<SubconNewIssue />} />
+            <Route path="subcontract-inward" element={<SubcontractInward />} />
+            <Route path="new-inward" element={<SubconNewInward />} />
+            <Route path="quality-inspection" element={<SubconQualityInspection />} />
+            <Route path="new-inspection" element={<SubconNewInspection />} />
+            <Route path="subcontract-bills" element={<SubcontractBills />} />
+            <Route path="new-bill" element={<SubconNewBill />} />
+            <Route path="reports" element={<SubcontractingReports />} />
+          </Route>
+
+          {/* Quality (own top-level menu, sibling to Subcontracting -- see
+              navConfig.js's own comment on this node). */}
+          <Route path="quality">
+            <Route index element={<SubMenuIndexPage navKey="quality" />} />
+            <Route path="dashboard" element={<QualityDashboard />} />
+            <Route path="inspection-planning" element={<InspectionPlanning />} />
+            <Route path="new-plan" element={<NewInspectionPlan />} />
+            <Route path="incoming-inspection" element={<IncomingInspection />} />
+            <Route path="new-inspection" element={<QualityNewInspection />} />
+            <Route path="in-process-inspection" element={<InProcessInspection />} />
+            <Route path="new-in-process-inspection" element={<NewInProcessInspection />} />
+            <Route path="final-inspection" element={<FinalInspection />} />
+            <Route path="new-final-inspection" element={<NewFinalInspection />} />
+            <Route path="ncr" element={<NonConformance />} />
+            <Route path="new-ncr" element={<NewNCR />} />
+            <Route path="capa" element={<CorrectiveAction />} />
+            <Route path="new-capa" element={<NewCAPA />} />
+            <Route path="report" element={<QualityReport />} />
           </Route>
 
           {/* Reports */}

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box, Card, CardContent, Stack, Typography, Grid, Button, Chip, LinearProgress,
-  Table, TableHead, TableBody, TableRow, TableCell, IconButton, Divider, Avatar,
+  Table, TableHead, TableBody, TableRow, TableCell, IconButton, Divider, Avatar, CircularProgress,
 } from '@mui/material';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartsTooltip, LineChart, Line, Legend,
+  Tooltip as RechartsTooltip, Legend,
 } from 'recharts';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -21,80 +21,21 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import EntityHeaderCard from '../../components/common/EntityHeaderCard';
 import ScrollableTableContainer from '../../components/data-display/ScrollableTableContainer';
+import { useGetProductionPlanningDashboardStatsQuery } from '../../features/productionPlanningApi';
 
 // ---------------------------------------------------------------------------
-// Static, UI-only mock of the Production Dashboard, built to match the
-// reference design the user supplied. Same convention as
-// pages/purchase/PurchaseOrderPrintPreview.jsx and the first draft of
-// pages/productionPlanning/Forecast.jsx: there is no Production Order,
-// Machine, or Quality Inspection data model anywhere in this schema yet (no
-// backing table for any of the numbers below), so this lays out the screen
-// exactly as designed with fixed mock data rather than fabricating "real"
-// numbers against tables that don't exist. The user explicitly chose this
-// static-mock option (over leaving the screen blank, or building the
-// underlying Production Order/Machine/QC modules first) when asked. Once
-// those modules exist, this can be wired up the same way Forecast.jsx was.
-// Local state only -- nothing here persists or calls the server.
+// Production Dashboard — Phase 1 (MRP & Order Generation), approved scope,
+// Section 6: only the order-status and planned-vs-completed trend widgets
+// are backed by real data (GET /production-planning/dashboard-stats —
+// mrpService.getDashboardStats, real ProductionOrder rows). Machine
+// Utilization, Material Availability, Quality Summary, Production Alerts
+// and the Top 5 Orders table have no backing data model anywhere in this
+// schema (no Machine, QC/Inspection, or per-order progress tracking) —
+// explicitly out of scope for this phase — so they are kept as clearly
+// labeled sample data rather than removed or fabricated as real.
 // ---------------------------------------------------------------------------
 
-const KPI_CARDS = [
-  {
-    key: 'total', label: 'Total Production Orders', value: '24', icon: AssignmentOutlinedIcon, color: 'warning',
-    sub: [{ label: 'In Progress', value: 18 }, { label: 'Completed', value: 4 }, { label: 'On Hold', value: 2 }],
-  },
-  {
-    key: 'planned', label: 'Planned Quantity', value: '12,500', unit: 'Nos', icon: PlayCircleOutlineIcon, color: 'success',
-    sub: [{ label: 'Completed', value: 8320 }, { label: 'Remaining', value: 4180 }],
-  },
-  {
-    key: 'achievement', label: 'Production Achievement', value: '66.6%', icon: BarChartIcon, color: 'info',
-    progress: 66.6, link: 'View Details',
-  },
-  {
-    key: 'delayed', label: 'Delayed Orders', value: '5', icon: WarningAmberIcon, color: 'error',
-    link: 'View Details', valueColor: 'error.main',
-  },
-  {
-    key: 'utilization', label: 'Machine Utilization', value: '72 %', icon: SettingsSuggestIcon, color: 'secondary',
-    progress: 72,
-  },
-  {
-    key: 'rejection', label: 'Rejection Rate', value: '2.8 %', icon: VerifiedUserOutlinedIcon, color: 'warning',
-    progress: 2.8,
-  },
-];
-
-const ORDER_STATUS_DATA = [
-  { name: 'In Progress', value: 18, color: '#4caf50' },
-  { name: 'Completed', value: 4, color: '#2196f3' },
-  { name: 'On Hold', value: 2, color: '#ff9800' },
-  { name: 'Cancelled', value: 0, color: '#f44336' },
-];
-
-const PLANNED_VS_COMPLETED = [
-  { week: 'W1', planned: 3200, completed: 2600 },
-  { week: 'W2', planned: 3600, completed: 2900 },
-  { week: 'W3', planned: 3900, completed: 3100 },
-  { week: 'W4', planned: 4300, completed: 3500 },
-  { week: 'W5', planned: 3700, completed: 2900 },
-];
-
-const PRODUCTION_TREND = [
-  { month: 'Apr', produced: 2050, rejected: 60 },
-  { month: 'May', produced: 2400, rejected: 70 },
-  { month: 'Jun', produced: 2700, rejected: 65 },
-  { month: 'Jul', produced: 3000, rejected: 80 },
-  { month: 'Aug', produced: 3350, rejected: 75 },
-  { month: 'Sep', produced: 3700, rejected: 70 },
-];
-
-const TOP_ORDERS = [
-  { po: 'PO-2026-001', item: 'Gear Housing', planned: 2000, completed: 1500, status: 'In Progress', statusColor: 'info', due: '05-Oct-2026', dueColor: 'text.primary', progress: 75 },
-  { po: 'PO-2026-002', item: 'Motor Bracket', planned: 1500, completed: 1500, status: 'Completed', statusColor: 'primary', due: '03-Oct-2026', dueColor: 'text.primary', progress: 100 },
-  { po: 'PO-2026-003', item: 'Shaft Assembly', planned: 1000, completed: 200, status: 'In Progress', statusColor: 'info', due: '10-Oct-2026', dueColor: 'text.primary', progress: 20 },
-  { po: 'PO-2026-004', item: 'Pump Cover', planned: 500, completed: 0, status: 'On Hold', statusColor: 'warning', due: '12-Oct-2026', dueColor: 'text.primary', progress: 0 },
-  { po: 'PO-2026-005', item: 'Valve Body', planned: 2000, completed: 800, status: 'Delayed', statusColor: 'error', due: '28-Sep-2026', dueColor: 'error.main', progress: 40 },
-];
+const STATUS_COLOR = { Planned: '#9e9e9e', Released: '#29b6f6', 'In Progress': '#4caf50', Completed: '#2196f3', Closed: '#607d8b', Cancelled: '#f44336' };
 
 const MACHINE_UTILIZATION = [
   { machine: 'CNC-01', planned: 8.0, running: 6.5, pct: 81 },
@@ -116,16 +57,11 @@ const QUALITY_SUMMARY = [
   { type: 'Incoming QC', inspected: 5000, accepted: 4850, rejected: 150, pct: 3.0 },
   { type: 'In-Process QC', inspected: 8000, accepted: 7800, rejected: 200, pct: 2.5 },
   { type: 'Final QC', inspected: 6500, accepted: 6300, rejected: 200, pct: 3.1 },
-  { type: 'Subcontracting QC', inspected: 2000, accepted: 1950, rejected: 50, pct: 2.5 },
-  { type: 'Job Work QC', inspected: 1000, accepted: 980, rejected: 20, pct: 2.0 },
 ];
 
 const PRODUCTION_ALERTS = [
-  { level: 'error', message: 'PO-2026-005 is delayed (Due: 28-Sep-2026)', time: '2 hrs ago' },
-  { level: 'error', message: 'Material shortage for Motor Bracket (300 Nos)', time: '3 hrs ago' },
-  { level: 'warning', message: 'Machine CNC-02 utilization below 65%', time: '4 hrs ago' },
-  { level: 'info', message: 'QC rejection higher for Pump Cover (5%)', time: '6 hrs ago' },
-  { level: 'info', message: 'Subcontracting receipt pending for PO-2026-003', time: '8 hrs ago' },
+  { level: 'warning', message: 'Sample alert — Production Alerts has no backing data source yet', time: '-' },
+  { level: 'info', message: 'Connect a real alerting rule here in a later phase', time: '-' },
 ];
 
 const ALERT_ICON = { error: ErrorOutlineIcon, warning: WarningAmberIcon, info: InfoOutlinedIcon };
@@ -134,26 +70,45 @@ const ALERT_COLOR = { error: 'error.main', warning: 'warning.main', info: 'info.
 function numberFmt(n) {
   return Number(n || 0).toLocaleString('en-IN');
 }
-
 function statusChipColor(status) {
   if (status === 'Available') return 'success';
   if (status === 'Shortage') return 'error';
   return 'default';
 }
+function SampleDataBadge() {
+  return <Chip size="small" label="Sample data" variant="outlined" color="default" sx={{ fontStyle: 'italic' }} />;
+}
 
 export default function ProductionPlanningDashboard() {
-  const [range] = useState('01-Oct-2026  -  31-Oct-2026');
+  const { data: stats, isLoading, refetch } = useGetProductionPlanningDashboardStatsQuery();
+
+  const statusCounts = stats?.orderStatusCounts || {};
+  const orderStatusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value, color: STATUS_COLOR[name] || '#9e9e9e' }));
+  const totalOrders = orderStatusData.reduce((s, d) => s + d.value, 0);
+  const inProgress = (statusCounts['In Progress'] || 0) + (statusCounts.Released || 0) + (statusCounts.Planned || 0);
+  const completed = (statusCounts.Completed || 0) + (statusCounts.Closed || 0);
+
+  const trend = stats?.plannedVsCompletedByMonth || [];
+
+  const kpiCards = [
+    {
+      key: 'total', label: 'Total Production Orders', value: isLoading ? '-' : String(totalOrders), icon: AssignmentOutlinedIcon, color: 'warning',
+      sub: [{ label: 'In Progress', value: inProgress }, { label: 'Completed', value: completed }],
+    },
+    {
+      key: 'open', label: 'Open Orders', value: isLoading ? '-' : String(stats?.totalOpenOrders ?? 0), icon: PlayCircleOutlineIcon, color: 'success',
+    },
+  ];
 
   return (
     <Box>
       <EntityHeaderCard
         icon={<DashboardIcon />}
         title="Production Dashboard"
-        subtitle="Real-time overview of production orders, material status, execution and quality."
+        subtitle="Overview of production orders. Order status and trend are live; other widgets below are sample data pending later phases."
         rightContent={(
           <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Chip label={range} variant="outlined" sx={{ fontWeight: 500 }} />
-            <IconButton size="small" sx={{ border: '1px solid', borderColor: 'divider' }}>
+            <IconButton size="small" sx={{ border: '1px solid', borderColor: 'divider' }} onClick={() => refetch()}>
               <RefreshIcon fontSize="small" />
             </IconButton>
             <Button variant="contained" color="warning" startIcon={<AddIcon />} endIcon={<KeyboardArrowDownIcon />} disabled>
@@ -163,27 +118,21 @@ export default function ProductionPlanningDashboard() {
         )}
       />
 
-      {/* KPI row */}
+      {/* KPI row — real data */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        {KPI_CARDS.map((kpi) => {
+        {kpiCards.map((kpi) => {
           const Icon = kpi.icon;
           return (
-            <Grid item xs={12} sm={6} md={4} lg={2} key={kpi.key}>
+            <Grid item xs={12} sm={6} md={3} key={kpi.key}>
               <Card variant="outlined" sx={{ height: '100%' }}>
                 <CardContent>
                   <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 1 }}>
                     <Avatar sx={{ bgcolor: `${kpi.color}.main`, width: 36, height: 36 }}>
                       <Icon fontSize="small" />
                     </Avatar>
-                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>
-                      {kpi.label}
-                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2 }}>{kpi.label}</Typography>
                   </Stack>
-                  <Typography variant="h5" fontWeight={700} color={kpi.valueColor}>
-                    {kpi.value}{' '}
-                    {kpi.unit && <Typography component="span" variant="body2" color="text.secondary">{kpi.unit}</Typography>}
-                  </Typography>
-
+                  <Typography variant="h5" fontWeight={700}>{kpi.value}</Typography>
                   {kpi.sub && (
                     <Stack direction="row" spacing={1.5} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
                       {kpi.sub.map((s) => (
@@ -194,21 +143,6 @@ export default function ProductionPlanningDashboard() {
                       ))}
                     </Stack>
                   )}
-
-                  {kpi.progress !== undefined && (
-                    <LinearProgress
-                      variant="determinate"
-                      value={Math.min(kpi.progress, 100)}
-                      color={kpi.color === 'warning' || kpi.color === 'secondary' ? 'primary' : kpi.color}
-                      sx={{ mt: 1.5, height: 6, borderRadius: 3 }}
-                    />
-                  )}
-
-                  {kpi.link && (
-                    <Typography variant="caption" color="primary.main" sx={{ display: 'block', mt: 1, cursor: 'pointer', fontWeight: 600 }}>
-                      {kpi.link} →
-                    </Typography>
-                  )}
                 </CardContent>
               </Card>
             </Grid>
@@ -216,137 +150,85 @@ export default function ProductionPlanningDashboard() {
         })}
       </Grid>
 
-      {/* Charts row */}
+      {/* Charts row — real data */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={5}>
           <Card variant="outlined" sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Production Order Status</Typography>
-              <Box sx={{ position: 'relative', height: 220 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={ORDER_STATUS_DATA} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2}>
-                      {ORDER_STATUS_DATA.map((d) => <Cell key={d.name} fill={d.color} />)}
-                    </Pie>
-                    <RechartsTooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-                <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                  <Typography variant="h5" fontWeight={700}>24</Typography>
-                  <Typography variant="caption" color="text.secondary">Orders</Typography>
+              {isLoading ? (
+                <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress size={28} /></Box>
+              ) : orderStatusData.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>No Production Orders yet.</Typography>
+              ) : (
+                <>
+                  <Box sx={{ position: 'relative', height: 220 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={orderStatusData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2}>
+                          {orderStatusData.map((d) => <Cell key={d.name} fill={d.color} />)}
+                        </Pie>
+                        <RechartsTooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                      <Typography variant="h5" fontWeight={700}>{totalOrders}</Typography>
+                      <Typography variant="caption" color="text.secondary">Orders</Typography>
+                    </Box>
+                  </Box>
+                  <Stack spacing={0.75} sx={{ mt: 1 }}>
+                    {orderStatusData.map((d) => {
+                      const pct = totalOrders ? Math.round((d.value / totalOrders) * 100) : 0;
+                      return (
+                        <Stack key={d.name} direction="row" alignItems="center" spacing={1}>
+                          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: d.color }} />
+                          <Typography variant="body2" sx={{ flex: 1 }}>{d.name}</Typography>
+                          <Typography variant="body2" color="text.secondary">{d.value} ({pct}%)</Typography>
+                        </Stack>
+                      );
+                    })}
+                  </Stack>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={7}>
+          <Card variant="outlined" sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Planned vs Completed Orders (Last 6 Months)</Typography>
+              {isLoading ? (
+                <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress size={28} /></Box>
+              ) : trend.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>No Production Orders in the last 6 months.</Typography>
+              ) : (
+                <Box sx={{ height: 260 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={trend}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                      <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
+                      <RechartsTooltip />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="planned" name="Planned / Open" fill="#bdbdbd" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="completed" name="Completed" fill="#ff9800" radius={[3, 3, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </Box>
-              </Box>
-              <Stack spacing={0.75} sx={{ mt: 1 }}>
-                {ORDER_STATUS_DATA.map((d) => {
-                  const total = ORDER_STATUS_DATA.reduce((s, x) => s + x.value, 0);
-                  const pct = total ? Math.round((d.value / total) * 100) : 0;
-                  return (
-                    <Stack key={d.name} direction="row" alignItems="center" spacing={1}>
-                      <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: d.color }} />
-                      <Typography variant="body2" sx={{ flex: 1 }}>{d.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">{d.value} ({pct}%)</Typography>
-                    </Stack>
-                  );
-                })}
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card variant="outlined" sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Planned vs Completed Quantity</Typography>
-              <Box sx={{ height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={PLANNED_VS_COMPLETED}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="week" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <RechartsTooltip />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="planned" name="Planned Qty" fill="#bdbdbd" radius={[3, 3, 0, 0]} />
-                    <Bar dataKey="completed" name="Completed Qty" fill="#ff9800" radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Card variant="outlined" sx={{ height: '100%' }}>
-            <CardContent>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>Production Trend (Last 6 Months)</Typography>
-              <Box sx={{ height: 260 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={PRODUCTION_TREND}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
-                    <RechartsTooltip />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Line type="monotone" dataKey="produced" name="Produced Qty" stroke="#ff9800" strokeWidth={2} dot={{ r: 4 }} />
-                    <Line type="monotone" dataKey="rejected" name="Rejection Qty" stroke="#f44336" strokeWidth={2} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
       </Grid>
 
-      {/* Tables row */}
+      {/* Below: sample data, explicitly out of Phase 1 scope (no Machine, QC, or alerting data model exists) */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} md={7}>
-          <Card variant="outlined" sx={{ height: '100%' }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2.5, pt: 2, pb: 1 }}>
-              <Typography variant="subtitle1" fontWeight={700}>Top 5 Production Orders (by Priority / Status)</Typography>
-              <Typography variant="body2" color="primary.main" fontWeight={600} sx={{ cursor: 'pointer' }}>View All →</Typography>
-            </Stack>
-            <ScrollableTableContainer maxHeight="none">
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>PO No</TableCell>
-                    <TableCell>Item</TableCell>
-                    <TableCell align="right">Planned Qty</TableCell>
-                    <TableCell align="right">Completed Qty</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Due Date</TableCell>
-                    <TableCell>Progress</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {TOP_ORDERS.map((o) => (
-                    <TableRow key={o.po} hover>
-                      <TableCell>
-                        <Typography variant="body2" color="primary.main" fontWeight={600}>{o.po}</Typography>
-                      </TableCell>
-                      <TableCell>{o.item}</TableCell>
-                      <TableCell align="right">{numberFmt(o.planned)}</TableCell>
-                      <TableCell align="right">{numberFmt(o.completed)}</TableCell>
-                      <TableCell><Chip size="small" label={o.status} color={o.statusColor} variant="outlined" /></TableCell>
-                      <TableCell><Typography variant="body2" color={o.dueColor}>{o.due}</Typography></TableCell>
-                      <TableCell sx={{ minWidth: 120 }}>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <LinearProgress variant="determinate" value={o.progress} sx={{ flex: 1, height: 6, borderRadius: 3 }} />
-                          <Typography variant="caption" color="text.secondary">{o.progress}%</Typography>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollableTableContainer>
-          </Card>
-        </Grid>
-
-        <Grid item xs={12} md={5}>
+        <Grid item xs={12} md={4}>
           <Card variant="outlined" sx={{ height: '100%' }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2.5, pt: 2, pb: 1 }}>
               <Typography variant="subtitle1" fontWeight={700}>Machine Utilization (Today)</Typography>
-              <Typography variant="body2" color="primary.main" fontWeight={600} sx={{ cursor: 'pointer' }}>View All →</Typography>
+              <SampleDataBadge />
             </Stack>
             <ScrollableTableContainer maxHeight="none">
               <Table size="small">
@@ -366,12 +248,7 @@ export default function ProductionPlanningDashboard() {
                       <TableCell align="right">{m.running.toFixed(1)}</TableCell>
                       <TableCell sx={{ minWidth: 130 }}>
                         <Stack direction="row" alignItems="center" spacing={1}>
-                          <LinearProgress
-                            variant="determinate"
-                            value={m.pct}
-                            color={m.pct < 65 ? 'warning' : 'success'}
-                            sx={{ flex: 1, height: 6, borderRadius: 3 }}
-                          />
+                          <LinearProgress variant="determinate" value={m.pct} color={m.pct < 65 ? 'warning' : 'success'} sx={{ flex: 1, height: 6, borderRadius: 3 }} />
                           <Typography variant="caption" color="text.secondary">{m.pct}%</Typography>
                         </Stack>
                       </TableCell>
@@ -382,15 +259,12 @@ export default function ProductionPlanningDashboard() {
             </ScrollableTableContainer>
           </Card>
         </Grid>
-      </Grid>
 
-      {/* Bottom row */}
-      <Grid container spacing={2}>
         <Grid item xs={12} md={4}>
           <Card variant="outlined" sx={{ height: '100%' }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2.5, pt: 2, pb: 1 }}>
               <Typography variant="subtitle1" fontWeight={700}>Material Availability for Production</Typography>
-              <Typography variant="body2" color="primary.main" fontWeight={600} sx={{ cursor: 'pointer' }}>View All →</Typography>
+              <SampleDataBadge />
             </Stack>
             <ScrollableTableContainer maxHeight="none">
               <Table size="small">
@@ -423,7 +297,7 @@ export default function ProductionPlanningDashboard() {
           <Card variant="outlined" sx={{ height: '100%' }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2.5, pt: 2, pb: 1 }}>
               <Typography variant="subtitle1" fontWeight={700}>Quality Summary (This Month)</Typography>
-              <Typography variant="body2" color="primary.main" fontWeight={600} sx={{ cursor: 'pointer' }}>View All →</Typography>
+              <SampleDataBadge />
             </Stack>
             <ScrollableTableContainer maxHeight="none">
               <Table size="small">
@@ -451,12 +325,14 @@ export default function ProductionPlanningDashboard() {
             </ScrollableTableContainer>
           </Card>
         </Grid>
+      </Grid>
 
-        <Grid item xs={12} md={4}>
-          <Card variant="outlined" sx={{ height: '100%' }}>
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <Card variant="outlined">
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2.5, pt: 2, pb: 1 }}>
               <Typography variant="subtitle1" fontWeight={700}>Production Alerts</Typography>
-              <Typography variant="body2" color="primary.main" fontWeight={600} sx={{ cursor: 'pointer' }}>View All →</Typography>
+              <SampleDataBadge />
             </Stack>
             <Divider />
             <Stack divider={<Divider />}>

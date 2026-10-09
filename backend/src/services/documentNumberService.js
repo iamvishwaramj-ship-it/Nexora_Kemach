@@ -127,6 +127,12 @@ const DOCUMENT_CATALOG = [
   // Company Setup > Document Numbering before the first Production Order can
   // be created (see routes/productionOrders.js).
   { code: 'PRO', name: 'Production Order',   prefix: 'PRO',  module: 'Production',  scope: 'transaction' },
+  // Production Planning > MRP & Order Generation — Phase 1
+  // (schema.prisma's ProductionGenerationOrder.goNumber). Same convention as
+  // PRO above: per-financial-year, admin sets up its series under Company
+  // Setup > Document Numbering before the first Generate Order run can be
+  // saved (see routes/productionPlanning.js).
+  { code: 'GO',  name: 'Generation Order',   prefix: 'GO',   module: 'Production',  scope: 'transaction' },
 
   // --- Masters: one perpetual series each ----------------------------------
   // `hiddenFromNumberingUI: true` keeps these out of the Document
@@ -235,6 +241,7 @@ const TRANSACTION_TABLE_SOURCES = {
   JEO: { model: 'journalEntry', field: 'originNo' },
   BPOB: { model: 'businessPartnerOpeningBalance', field: 'documentNumber' },
   PRO: { model: 'productionOrder', field: 'orderNo' },
+  GO: { model: 'productionGenerationOrder', field: 'goNumber' },
 };
 
 /** Every numberable document type's storage location, master or transaction. */

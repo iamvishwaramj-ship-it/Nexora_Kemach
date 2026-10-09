@@ -56,6 +56,8 @@ export const SIDEBAR_ICON_COLORS = {
   banking: '#7E57C2',     // deep purple
   'production-planning': '#8D6E63',  // brown
   'production-execution': '#D81B60', // pink / crimson
+  subcontracting: '#AD1457',         // rose / dark pink
+  quality: '#6A1B9A',     // deep violet / purple
   reports: '#AB47BC',     // violet
   user: '#DE3A8B',        // magenta
   settings: '#78909C',    // blue-grey (neutral: chrome, not a section)
