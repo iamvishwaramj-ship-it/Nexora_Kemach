@@ -28,6 +28,7 @@
 //   product   3.86/4.39   partner 3.46/4.91   purchase   3.70/4.59
 //   sales     3.51/4.84   inventory 3.86/4.40 receivables 4.72/3.60
 //   payables  4.86/3.49   banking 5.21/3.26
+//   productionMaster 4.26/3.98
 //   productionPlanning 4.62/3.68   productionExecution 4.95/3.44
 //   reports   4.82/3.53   user    4.13/4.11   settings 3.35/5.07
 //
@@ -54,6 +55,7 @@ export const SIDEBAR_ICON_COLORS = {
   receivables: '#2A6FE0', // blue
   payables: '#5C6BC0',    // indigo
   banking: '#7E57C2',     // deep purple
+  'production-master': '#B5654A',    // copper / terracotta
   'production-planning': '#8D6E63',  // brown
   'production-execution': '#D81B60', // pink / crimson
   subcontracting: '#AD1457',         // rose / dark pink

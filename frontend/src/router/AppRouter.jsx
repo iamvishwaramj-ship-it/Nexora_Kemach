@@ -159,6 +159,18 @@ const GeneratedOrders = lazy(() => import('../pages/productionPlanning/Generated
 const WorkCenters = lazy(() => import('../pages/productionPlanning/WorkCenters'));
 const BillOfMaterials = lazy(() => import('../pages/productionPlanning/BillOfMaterials'));
 const Routings = lazy(() => import('../pages/productionPlanning/Routings'));
+
+// Production Master -- own top-level menu, BOM Master list/create pair.
+const BomMaster = lazy(() => import('../pages/productionMaster/BomMaster'));
+const NewBom = lazy(() => import('../pages/productionMaster/NewBom'));
+const BomVersion = lazy(() => import('../pages/productionMaster/BomVersion'));
+const NewBomVersion = lazy(() => import('../pages/productionMaster/NewBomVersion'));
+const RoutingProcessMaster = lazy(() => import('../pages/productionMaster/RoutingProcessMaster'));
+const NewRoutingProcess = lazy(() => import('../pages/productionMaster/NewRoutingProcess'));
+const OperationMaster = lazy(() => import('../pages/productionMaster/OperationMaster'));
+const NewOperation = lazy(() => import('../pages/productionMaster/NewOperation'));
+const AlternateBom = lazy(() => import('../pages/productionMaster/AlternateBom'));
+const AlternateRouting = lazy(() => import('../pages/productionMaster/AlternateRouting'));
 const PECreateProductionOrder = lazy(() => import('../pages/productionPlanning/productionExecution/CreateProductionOrder'));
 const PEProductionOrders = lazy(() => import('../pages/productionPlanning/productionExecution/ProductionOrders'));
 const PEViewOrder = lazy(() => import('../pages/productionPlanning/productionExecution/ViewOrder'));
@@ -218,6 +230,8 @@ const NonConformance = lazy(() => import('../pages/quality/NonConformance'));
 const NewNCR = lazy(() => import('../pages/quality/NewNCR'));
 const CorrectiveAction = lazy(() => import('../pages/quality/CorrectiveAction'));
 const NewCAPA = lazy(() => import('../pages/quality/NewCAPA'));
+const EightDManagement = lazy(() => import('../pages/quality/EightDManagement'));
+const NewEightD = lazy(() => import('../pages/quality/NewEightD'));
 const QualityReport = lazy(() => import('../pages/quality/QualityReport'));
 
 // User Management
@@ -396,14 +410,21 @@ export default function AppRouter() {
           </Route>
 
           {/* Production Master -- own top-level menu, sibling to and placed
-              directly above Production Planning. Reuses the same Bill of
-              Materials screen/component as Production Planning > Bill of
-              Materials (no separate BOM data model -- it's the same
-              production/boms resource, just reachable from a second place
-              in the sidebar). */}
+              directly above Production Planning. BOM Master is its own
+              dedicated list/create screen pair, built to the reference
+              design (pages/productionMaster/). */}
           <Route path="production-master">
             <Route index element={<SubMenuIndexPage navKey="production-master" />} />
-            <Route path="bom" element={<BillOfMaterials />} />
+            <Route path="bom" element={<BomMaster />} />
+            <Route path="new-bom" element={<NewBom />} />
+            <Route path="bom-version" element={<BomVersion />} />
+            <Route path="new-bom-version" element={<NewBomVersion />} />
+            <Route path="routing" element={<RoutingProcessMaster />} />
+            <Route path="new-routing" element={<NewRoutingProcess />} />
+            <Route path="operation-master" element={<OperationMaster />} />
+            <Route path="new-operation" element={<NewOperation />} />
+            <Route path="alternate-bom" element={<AlternateBom />} />
+            <Route path="alternate-routing" element={<AlternateRouting />} />
           </Route>
 
           {/* Production Planning */}
@@ -497,6 +518,8 @@ export default function AppRouter() {
             <Route path="new-ncr" element={<NewNCR />} />
             <Route path="capa" element={<CorrectiveAction />} />
             <Route path="new-capa" element={<NewCAPA />} />
+            <Route path="8d" element={<EightDManagement />} />
+            <Route path="new-8d" element={<NewEightD />} />
             <Route path="report" element={<QualityReport />} />
           </Route>
 

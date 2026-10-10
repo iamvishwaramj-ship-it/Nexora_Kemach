@@ -177,17 +177,27 @@ export const navConfig = [
     ],
   },
   {
-    // Own top-level menu, placed directly above Production Planning, with
-    // the same icon (Factory) so the two read as a matched pair in the
-    // sidebar. Reuses the Production Planning > Bill of Materials screen
-    // for its BOM submenu -- same production/boms resource, second
-    // sidebar entry point.
+    // Own top-level menu, placed directly above Production Planning. Uses a
+    // distinct icon (PrecisionManufacturing) and its own sidebar colour
+    // (see sidebarIconColors.js) so it doesn't read as the same entry as
+    // Production Planning (Factory). BOM Master is its own dedicated
+    // list/create pair (pages/productionMaster/) built to the reference
+    // design, separate from Production Planning > Bill of Materials.
     key: 'production-master',
     labelKey: 'Production Master',
     path: '/production-master',
-    icon: 'Factory',
+    icon: 'PrecisionManufacturing',
     children: [
-      { key: 'production-master-bom', labelKey: 'BOM', path: '/production-master/bom', icon: 'AccountTree' },
+      { key: 'production-master-bom', labelKey: 'BOM Master', path: '/production-master/bom', icon: 'AccountTree' },
+      { key: 'production-master-new-bom', labelKey: 'New BOM', path: '/production-master/new-bom', icon: 'NoteAdd', hidden: true },
+      { key: 'production-master-bom-version', labelKey: 'BOM Version', path: '/production-master/bom-version', icon: 'AccountTree' },
+      { key: 'production-master-new-bom-version', labelKey: 'New BOM Version', path: '/production-master/new-bom-version', icon: 'NoteAdd', hidden: true },
+      { key: 'production-master-routing', labelKey: 'Routing / Process Master', path: '/production-master/routing', icon: 'Settings' },
+      { key: 'production-master-new-routing', labelKey: 'New Routing', path: '/production-master/new-routing', icon: 'NoteAdd', hidden: true },
+      { key: 'production-master-operation-master', labelKey: 'Operation Master', path: '/production-master/operation-master', icon: 'Settings' },
+      { key: 'production-master-new-operation', labelKey: 'New Operation', path: '/production-master/new-operation', icon: 'NoteAdd', hidden: true },
+      { key: 'production-master-alternate-bom', labelKey: 'Alternate BOM', path: '/production-master/alternate-bom', icon: 'AccountTree' },
+      { key: 'production-master-alternate-routing', labelKey: 'Alternate Routing', path: '/production-master/alternate-routing', icon: 'AccountTree' },
     ],
   },
   {
@@ -220,12 +230,12 @@ export const navConfig = [
       { key: 'production-execution-production-orders', labelKey: 'Production Orders', path: '/production-execution/production-orders', icon: 'Assignment' },
       // { key: 'production-execution-view-order', labelKey: 'View Order', path: '/production-execution/view-order', icon: 'Visibility' },
       // { key: 'production-execution-operations', labelKey: 'Operations', path: '/production-execution/operations', icon: 'Build' },
-      // { key: 'production-execution-production-execution', labelKey: 'Production Execution', path: '/production-execution/production-execution-status', icon: 'Engineering' },
+      { key: 'production-execution-production-execution', labelKey: 'Production Execution', path: '/production-execution/production-execution-status', icon: 'Engineering' },
       { key: 'production-execution-material-requisition', labelKey: 'Material Requisition', path: '/production-execution/material-requisition', icon: 'Inventory2' },
-      // { key: 'production-execution-material-issue', labelKey: 'Material Issue', path: '/production-execution/material-issue', icon: 'Outbox' },
+      { key: 'production-execution-material-issue', labelKey: 'Material Issue', path: '/production-execution/material-issue', icon: 'Outbox' },
       // { key: 'production-execution-material-receipt', labelKey: 'Material Receipt', path: '/production-execution/material-receipt', icon: 'MoveToInbox' },
-      { key: 'production-execution-create-issue', labelKey: 'Create Issue', path: '/production-execution/create-issue', icon: 'NoteAdd' },
-      { key: 'production-execution-record-production', labelKey: 'Record Production', path: '/production-execution/record-production', icon: 'PlaylistAddCheck' },
+      // { key: 'production-execution-create-issue', labelKey: 'Create Issue', path: '/production-execution/create-issue', icon: 'NoteAdd' },
+      // { key: 'production-execution-record-production', labelKey: 'Record Production', path: '/production-execution/record-production', icon: 'PlaylistAddCheck' },
       // { key: 'production-execution-production-history', labelKey: 'Production History', path: '/production-execution/production-history', icon: 'History' },
       // { key: 'production-execution-product-cost', labelKey: 'Product Cost', path: '/production-execution/product-cost', icon: 'PriceCheck' },
       { key: 'production-execution-rework-scrap', labelKey: 'Rework & Scrap', path: '/production-execution/rework-scrap', icon: 'Recycling' },
@@ -235,7 +245,7 @@ export const navConfig = [
       { key: 'production-execution-notes', labelKey: 'Notes', path: '/production-execution/notes', icon: 'EditNote' },
       // { key: 'production-execution-create-requisition', labelKey: 'Create Requisition', path: '/production-execution/create-requisition', icon: 'PostAdd' },
       { key: 'production-execution-create-production-order', labelKey: 'Create Production Order', path: '/production-execution/create-production-order', icon: 'NoteAdd' },
-      { key: 'production-execution-create-rework-entry', labelKey: 'Create Rework Entry', path: '/production-execution/create-rework-entry', icon: 'NoteAdd' },
+      // { key: 'production-execution-create-rework-entry', labelKey: 'Create Rework Entry', path: '/production-execution/create-rework-entry', icon: 'NoteAdd' },
       // { key: 'production-execution-production-order-report', labelKey: 'Production Order Report', path: '/production-execution/production-order-report', icon: 'ListAlt' },
       // { key: 'production-execution-material-consumption-report', labelKey: 'Material Consumption Report', path: '/production-execution/material-consumption-report', icon: 'ListAlt' },
       // { key: 'production-execution-material-issue-report', labelKey: 'Material Issue Report', path: '/production-execution/material-issue-report', icon: 'ListAlt' },
@@ -286,17 +296,19 @@ export const navConfig = [
     children: [
       { key: 'quality-dashboard', labelKey: 'Dashboard', path: '/quality/dashboard', icon: 'Dashboard' },
       { key: 'quality-inspection-planning', labelKey: 'Inspection Planning', path: '/quality/inspection-planning', icon: 'DateRange' },
-      { key: 'quality-new-plan', labelKey: 'New Plan', path: '/quality/new-plan', icon: 'NoteAdd' },
+      // { key: 'quality-new-plan', labelKey: 'New Plan', path: '/quality/new-plan', icon: 'NoteAdd' },
       { key: 'quality-incoming-inspection', labelKey: 'Incoming Inspection', path: '/quality/incoming-inspection', icon: 'MoveToInbox' },
-      { key: 'quality-new-inspection', labelKey: 'New Inspection', path: '/quality/new-inspection', icon: 'NoteAdd' },
+      // { key: 'quality-new-inspection', labelKey: 'New Inspection', path: '/quality/new-inspection', icon: 'NoteAdd' },
       { key: 'quality-in-process-inspection', labelKey: 'In-process Inspection', path: '/quality/in-process-inspection', icon: 'Engineering' },
-      { key: 'quality-new-in-process-inspection', labelKey: 'New In-process Inspection', path: '/quality/new-in-process-inspection', icon: 'NoteAdd' },
+      // { key: 'quality-new-in-process-inspection', labelKey: 'New In-process Inspection', path: '/quality/new-in-process-inspection', icon: 'NoteAdd' },
       { key: 'quality-final-inspection', labelKey: 'Final Inspection', path: '/quality/final-inspection', icon: 'TaskAlt' },
-      { key: 'quality-new-final-inspection', labelKey: 'New Final Inspection', path: '/quality/new-final-inspection', icon: 'NoteAdd' },
+      // { key: 'quality-new-final-inspection', labelKey: 'New Final Inspection', path: '/quality/new-final-inspection', icon: 'NoteAdd' },
       { key: 'quality-ncr', labelKey: 'Non-conformance (NCR)', path: '/quality/ncr', icon: 'WarningAmber' },
-      { key: 'quality-new-ncr', labelKey: 'New NCR', path: '/quality/new-ncr', icon: 'NoteAdd' },
+      // { key: 'quality-new-ncr', labelKey: 'New NCR', path: '/quality/new-ncr', icon: 'NoteAdd' },
       { key: 'quality-capa', labelKey: 'Corrective Action (CAPA)', path: '/quality/capa', icon: 'Build' },
-      { key: 'quality-new-capa', labelKey: 'New CAPA', path: '/quality/new-capa', icon: 'NoteAdd' },
+      // { key: 'quality-new-capa', labelKey: 'New CAPA', path: '/quality/new-capa', icon: 'NoteAdd' },
+      { key: 'quality-8d', labelKey: '8D Management', path: '/quality/8d', icon: 'FactCheck' },
+      { key: 'quality-new-8d', labelKey: 'New 8D', path: '/quality/new-8d', icon: 'NoteAdd', hidden: true },
       { key: 'quality-report', labelKey: 'Quality Report', path: '/quality/report', icon: 'Assessment' },
     ],
   },

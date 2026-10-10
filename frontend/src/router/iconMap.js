@@ -88,6 +88,7 @@ import DoneAll from '@mui/icons-material/DoneAll';
 import PostAdd from '@mui/icons-material/PostAdd';
 import Timeline from '@mui/icons-material/Timeline';
 import Recycling from '@mui/icons-material/Recycling';
+import FactCheck from '@mui/icons-material/FactCheck';
 
 export const iconMap = {
   Dashboard, Business, Domain, AccountTree, DateRange, Numbers, Percent,
@@ -118,6 +119,7 @@ export const iconMap = {
   PostAdd,
   Timeline,
   Recycling,
+  FactCheck,
 };
 
 export function getNavIcon(name) {
