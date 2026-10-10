@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Card, CardContent, Stack, Typography, Grid, TextField, MenuItem, Button, Checkbox,
   FormControlLabel, InputAdornment, Table, TableHead, TableBody, TableRow, TableCell, IconButton,
 } from '@mui/material';
+import { useNotify } from '../../../components/feedback/NotificationProvider';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -28,7 +30,10 @@ import ScrollableTableContainer from '../../../components/data-display/Scrollabl
 // schema, so this lays out the form exactly as designed with fixed mock
 // data rather than fabricating "real" records against tables that don't
 // exist. Local state only -- nothing here persists or calls the server;
-// Submit/Save as Draft/Reset do not navigate or clear real data.
+// "Submit Issue" and "Back to List" only navigate back to the Material
+// Issue list (with a confirmation toast on Submit), and "Save as Draft" is
+// toast-only. No issue record is actually written anywhere since there is
+// no backing table for one.
 // ---------------------------------------------------------------------------
 
 const DEPARTMENTS = ['Production', 'Maintenance', 'Tool Room', 'Quality'];
@@ -48,6 +53,8 @@ function numberFmt(n) {
 }
 
 export default function CreateIssue() {
+  const navigate = useNavigate();
+  const notify = useNotify();
   const [autoGenerate, setAutoGenerate] = useState(true);
   const [issueNo] = useState('MI-2026-011');
   const [issueDate, setIssueDate] = useState('2026-10-08');
@@ -87,6 +94,13 @@ export default function CreateIssue() {
       { no: (prev[prev.length - 1]?.no || 0) + 1, code: '', desc: '', uom: '', required: 0, stock: 0, issueQty: 0, batch: '', bin: '', remarks: '-' },
     ]);
   };
+
+  const handleSubmitIssue = () => {
+    notify.success(`Material issue ${issueNo} submitted.`);
+    navigate('/production-execution/material-issue');
+  };
+  const handleSaveAsDraft = () => notify.info('Saved as draft.');
+  const handleBackToList = () => navigate('/production-execution/material-issue');
 
   return (
     <Box>
@@ -305,11 +319,11 @@ export default function CreateIssue() {
 
       {/* Bottom action bar */}
       <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
-        <Button variant="outlined" startIcon={<ArrowBackOutlinedIcon />}>Back to List</Button>
+        <Button variant="outlined" startIcon={<ArrowBackOutlinedIcon />} onClick={handleBackToList}>Back to List</Button>
         <Box sx={{ flex: 1 }} />
-        <Button variant="outlined" startIcon={<RestartAltIcon />}>Reset</Button>
-        <Button variant="outlined" startIcon={<SaveOutlinedIcon />}>Save as Draft</Button>
-        <Button variant="contained" startIcon={<SendOutlinedIcon />}>Submit Issue</Button>
+        <Button variant="outlined" startIcon={<RestartAltIcon />} onClick={() => setItems(INITIAL_ITEMS)}>Reset</Button>
+        <Button variant="outlined" startIcon={<SaveOutlinedIcon />} onClick={handleSaveAsDraft}>Save as Draft</Button>
+        <Button variant="contained" startIcon={<SendOutlinedIcon />} onClick={handleSubmitIssue}>Submit Issue</Button>
       </Stack>
     </Box>
   );

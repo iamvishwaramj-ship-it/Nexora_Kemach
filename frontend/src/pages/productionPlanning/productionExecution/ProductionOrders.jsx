@@ -28,6 +28,16 @@ import LoadingState from '../../../components/feedback/LoadingState';
 import EmptyState from '../../../components/data-display/EmptyState';
 import { productionOrderApi, useUpdateProductionOrderStatusMutation } from '../../../features/productionApi';
 import { useNotify } from '../../../components/feedback/NotificationProvider';
+import { isDemoMode } from '../../../lib/demoMode';
+import { withDemoCrud } from '../../../lib/demoCrud';
+import { DEMO_PRODUCTION_ORDERS } from '../../../lib/demoData/productionPlanning';
+
+// Demo-mode-aware api: a pure pass-through to the real productionOrderApi
+// when demo mode is off (see ../../../lib/demoMode.js). Shared with
+// ViewOrder.jsx and CreateProductionOrder.jsx via the same DEMO_PRODUCTION_ORDERS
+// array reference, so orders created/advanced/cancelled in one screen are
+// visible in the others during a demo.
+const demoAwareProductionOrderApi = withDemoCrud(productionOrderApi, DEMO_PRODUCTION_ORDERS);
 
 // ---------------------------------------------------------------------------
 // Production Orders — real data as of Phase A (schema.prisma's
@@ -102,8 +112,10 @@ export default function ProductionOrders() {
 
   const navigate = useNavigate();
   const notify = useNotify();
-  const { data: ordersRaw, isLoading, isError } = productionOrderApi.useList();
-  const [updateStatus, { isLoading: statusUpdating }] = useUpdateProductionOrderStatusMutation();
+  const { data: ordersRaw, isLoading, isError } = demoAwareProductionOrderApi.useList();
+  const [updateStatus, { isLoading: statusUpdatingReal }] = useUpdateProductionOrderStatusMutation();
+  const [demoUpdate, { isLoading: statusUpdatingDemo }] = demoAwareProductionOrderApi.useUpdate();
+  const statusUpdating = isDemoMode() ? statusUpdatingDemo : statusUpdatingReal;
   const allRows = useMemo(() => (ordersRaw || []).map(toRow), [ordersRaw]);
 
   const rows = useMemo(() => allRows.filter((r) => {
@@ -134,7 +146,11 @@ export default function ProductionOrders() {
   const handleAdvance = async (targetStatus) => {
     if (!selected) return;
     try {
-      await updateStatus({ id: selected.id, status: targetStatus }).unwrap();
+      if (isDemoMode()) {
+        await demoUpdate({ id: selected.id, status: targetStatus }).unwrap();
+      } else {
+        await updateStatus({ id: selected.id, status: targetStatus }).unwrap();
+      }
       notify.success(`Production order ${selected.no} is now ${targetStatus}`);
     } catch (err) {
       notify.error(err?.data?.message || 'Could not update status');

@@ -18,6 +18,9 @@ import EntityHeaderCard from '../../components/common/EntityHeaderCard';
 import ScrollableTableContainer from '../../components/data-display/ScrollableTableContainer';
 import { useNotify } from '../../components/feedback/NotificationProvider';
 import { useListOpenSalesOrderLinesQuery, useCreateGenerationOrderMutation } from '../../features/productionPlanningApi';
+import { isDemoMode } from '../../lib/demoMode';
+import { DEMO_OPEN_SALES_ORDER_LINES } from '../../lib/demoData/productionPlanning';
+import { DEMO_GO_ID } from '../../lib/demoData/generationOrder';
 
 // ---------------------------------------------------------------------------
 // Generate Order - Sales Order — Phase 1 (MRP & Order Generation), approved
@@ -55,7 +58,9 @@ export default function GenerateOrderSalesOrder() {
   const [plant, setPlant] = useState('');
   const [notes, setNotes] = useState('');
 
-  const { data: lines = [], isLoading } = useListOpenSalesOrderLinesQuery();
+  const { data: realLines = [], isLoading: isLoadingReal } = useListOpenSalesOrderLinesQuery(undefined, { skip: isDemoMode() });
+  const lines = isDemoMode() ? DEMO_OPEN_SALES_ORDER_LINES : realLines;
+  const isLoading = isDemoMode() ? false : isLoadingReal;
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(() => new Set());
   const [selectQtyById, setSelectQtyById] = useState({});
@@ -93,6 +98,11 @@ export default function GenerateOrderSalesOrder() {
   const handleGenerate = async () => {
     if (selectedLines.length === 0) {
       notify.error('Select at least one Sales Order line first');
+      return;
+    }
+    if (isDemoMode()) {
+      notify.success('Orders generated');
+      navigate(`/production-planning/generate-order?goId=${DEMO_GO_ID}`);
       return;
     }
     try {

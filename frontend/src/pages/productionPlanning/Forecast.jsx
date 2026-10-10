@@ -25,6 +25,11 @@ import { branchApi, productGroupApi, customerApi } from '../../features/resource
 import {
   usePreviewForecastPlanMutation, useCreateForecastPlanMutation, useListItemCategoriesQuery,
 } from '../../features/productionPlanningApi';
+import { isDemoMode } from '../../lib/demoMode';
+import {
+  DEMO_BRANCHES, DEMO_PRODUCT_GROUPS, DEMO_ITEM_CATEGORIES, DEMO_CUSTOMERS,
+} from '../../lib/demoData/productionPlanning';
+import { buildDemoForecastResult } from '../../lib/demoData/forecast';
 
 // ---------------------------------------------------------------------------
 // Forecast Plan screen — all data below is real:
@@ -83,23 +88,43 @@ export default function Forecast() {
   // Plain .useList() — these resources' `list` endpoint always returns every
   // row (no server-side status filter wired for them), so "Active" is
   // applied client-side instead of passing an unsupported ?status= param.
-  const { data: branchesRaw } = branchApi.useList();
-  const { data: productGroupsRaw } = productGroupApi.useList();
-  const { data: itemCategories } = useListItemCategoriesQuery();
-  const { data: customers } = customerApi.useList();
-  const branches = useMemo(() => (branchesRaw || []).filter((b) => b.status !== 'Inactive'), [branchesRaw]);
-  const productGroups = useMemo(() => (productGroupsRaw || []).filter((g) => g.status !== 'Inactive'), [productGroupsRaw]);
+  // Skips the real network calls in demo mode, falling back to fixed demo
+  // master data instead (see ../../lib/demoMode.js).
+  const { data: branchesRaw } = branchApi.useList(undefined, { skip: isDemoMode() });
+  const { data: productGroupsRaw } = productGroupApi.useList(undefined, { skip: isDemoMode() });
+  const { data: itemCategoriesReal } = useListItemCategoriesQuery(undefined, { skip: isDemoMode() });
+  const { data: customersReal } = customerApi.useList(undefined, { skip: isDemoMode() });
+  const itemCategories = isDemoMode() ? DEMO_ITEM_CATEGORIES : itemCategoriesReal;
+  const customers = isDemoMode() ? DEMO_CUSTOMERS : customersReal;
+  const branches = useMemo(
+    () => (isDemoMode() ? DEMO_BRANCHES : (branchesRaw || []).filter((b) => b.status !== 'Inactive')),
+    [branchesRaw],
+  );
+  const productGroups = useMemo(
+    () => (isDemoMode() ? DEMO_PRODUCT_GROUPS : (productGroupsRaw || []).filter((g) => g.status !== 'Inactive')),
+    [productGroupsRaw],
+  );
 
   // --- Real computed forecast (Actual Demand, Forecast Demand, Method, --
-  // Section 3 order summary) — nothing below `result` is client-invented.
-  const [runPreview, { data: result, isLoading: isRunning, error: runError }] = usePreviewForecastPlanMutation();
+  // Section 3 order summary) — nothing below `result` is client-invented,
+  // except in demo mode, where it's a fixed in-memory computation (see
+  // ../../lib/demoData/forecast.js) and the mutation below is never called.
+  const [runPreview, { data: previewResult, isLoading: isRunning, error: runError }] = usePreviewForecastPlanMutation();
   const [savePlan, { isLoading: isSaving }] = useCreateForecastPlanMutation();
+  const [demoResult, setDemoResult] = useState(null);
+  const result = isDemoMode() ? demoResult : previewResult;
 
   const scope = useMemo(() => ({
     fromMonth, toMonth, forecastPeriod, branch, itemGroup, itemCategory, customer, includeSafetyStock,
   }), [fromMonth, toMonth, forecastPeriod, branch, itemGroup, itemCategory, customer, includeSafetyStock]);
 
   const runForecast = async () => {
+    if (isDemoMode()) {
+      const data = buildDemoForecastResult();
+      setDemoResult(data);
+      setSelected(new Set((data.rows || []).map((r) => r.productCode)));
+      return;
+    }
     try {
       const data = await runPreview(scope).unwrap();
       setSelected(new Set((data.rows || []).filter((r) => r.included).map((r) => r.productCode)));
@@ -148,6 +173,10 @@ export default function Forecast() {
   };
 
   const handleSave = async () => {
+    if (isDemoMode()) {
+      setToast({ severity: 'success', message: `Plan saved as "${planName}".` });
+      return;
+    }
     try {
       const productCodes = Array.from(selected);
       await savePlan({

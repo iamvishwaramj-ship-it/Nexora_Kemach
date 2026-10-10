@@ -17,6 +17,8 @@ import BuildIcon from '@mui/icons-material/Build';
 import EntityHeaderCard from '../../components/common/EntityHeaderCard';
 import ScrollableTableContainer from '../../components/data-display/ScrollableTableContainer';
 import { useGetGenerationOrderQuery } from '../../features/productionPlanningApi';
+import { isDemoMode } from '../../lib/demoMode';
+import { DEMO_GENERATION_ORDER, DEMO_GO_ID } from '../../lib/demoData/generationOrder';
 
 // ---------------------------------------------------------------------------
 // Generated Orders — Phase 1 (MRP & Order Generation), approved scope.
@@ -38,8 +40,15 @@ function fmtDate(d) {
 export default function GeneratedOrders() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const goId = Number(searchParams.get('goId')) || null;
-  const { data: go, isLoading, isError } = useGetGenerationOrderQuery(goId, { skip: !goId });
+  // In demo mode, show the fixed demo Generation Order even if the screen
+  // is opened directly with no goId in the URL (see lib/demoMode.js) —
+  // outside demo mode this is unchanged.
+  const goId = Number(searchParams.get('goId')) || (isDemoMode() ? DEMO_GO_ID : null);
+  const { data: realGo, isLoading, isError } = useGetGenerationOrderQuery(goId, { skip: !goId || isDemoMode() });
+  // Client-demo path: frontend-only, uses a fixed static Generation Order
+  // instead of fetching from the backend (see lib/demoMode.js). Flip
+  // DEMO_MODE back to false to restore the real fetch above unchanged.
+  const go = isDemoMode() ? DEMO_GENERATION_ORDER : realGo;
 
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');

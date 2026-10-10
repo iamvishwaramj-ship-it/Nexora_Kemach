@@ -259,7 +259,7 @@ export default function QualityDashboard() {
             <Typography variant="subtitle1" fontWeight={700} color="primary.main">Recent Inspections</Typography>
           </Stack>
           <Stack direction="row" spacing={1.25}>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/quality/new-inspection')}>New Inspection</Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/quality/inspection-planning')}>New Inspection</Button>
             <Button variant="outlined" onClick={() => navigate('/quality/incoming-inspection')}>View All</Button>
           </Stack>
         </Stack>

@@ -149,7 +149,7 @@ export default function SubcontractingDashboard() {
     <Stack spacing={1} alignItems="flex-end">
       {breadcrumb}
       <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap justifyContent="flex-end">
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/subcontracting/new-subcontracting-order')}>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/subcontracting/subcontract-orders')}>
           New Subcontract Order
         </Button>
         <Button variant="outlined" startIcon={<FileDownloadOutlinedIcon />} endIcon={<KeyboardArrowDownIcon />}>Export</Button>

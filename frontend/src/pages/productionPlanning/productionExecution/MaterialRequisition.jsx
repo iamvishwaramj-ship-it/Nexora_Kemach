@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Card, CardContent, Stack, Typography, Grid, TextField, MenuItem, Button, Chip,
   Checkbox, InputAdornment, Table, TableHead, TableBody, TableRow, TableCell, IconButton, Menu,
@@ -98,6 +99,7 @@ function RowActionMenu() {
 }
 
 export default function MaterialRequisition() {
+  const navigate = useNavigate();
   const [requisitionNo, setRequisitionNo] = useState('');
   const [fromDate, setFromDate] = useState('2026-09-01');
   const [toDate, setToDate] = useState('2026-10-10');
@@ -123,7 +125,9 @@ export default function MaterialRequisition() {
 
   const headerActions = (
     <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
-      <Button variant="contained" startIcon={<AddIcon />}>Create Requisition</Button>
+      <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/production-execution/create-requisition')}>
+        Create Requisition
+      </Button>
       <Button variant="outlined" startIcon={<FileDownloadOutlinedIcon />}>Export</Button>
       <Button variant="outlined" startIcon={<PrintOutlinedIcon />}>Print</Button>
     </Stack>

@@ -14,6 +14,14 @@ import { useNotify } from '../../components/feedback/NotificationProvider';
 import { useConfirm } from '../../components/feedback/ConfirmationDialog';
 import { productApi } from '../../features/resources';
 import { bomApi } from '../../features/productionApi';
+import { isDemoMode } from '../../lib/demoMode';
+import { withDemoCrud } from '../../lib/demoCrud';
+import { DEMO_BOMS, DEMO_PRODUCTS } from '../../lib/demoData/productionPlanning';
+
+// Demo-mode-aware api: a pure pass-through to the real bomApi when demo mode
+// is off (see ../../lib/demoMode.js) — nothing about this screen's behavior
+// changes until that flag is flipped on for a client demo.
+const demoAwareBomApi = withDemoCrud(bomApi, DEMO_BOMS);
 
 // Production Planning > Bill of Materials — Phase A manufacturing
 // foundation. Minimum UI to manage BOMs, per the approved Phase A scope:
@@ -37,11 +45,14 @@ function emptyHeader() {
 export default function BillOfMaterials() {
   const notify = useNotify();
   const confirmDialog = useConfirm();
-  const { data: boms, isLoading } = bomApi.useList();
-  const { data: products } = productApi.useList();
-  const [create, { isLoading: creating }] = bomApi.useCreate();
-  const [update, { isLoading: updating }] = bomApi.useUpdate();
-  const [remove] = bomApi.useDelete();
+  const { data: boms, isLoading } = demoAwareBomApi.useList();
+  // Skips the real network call in demo mode (no backend involvement at
+  // all), falling back to the fixed demo product list instead.
+  const { data: realProducts } = productApi.useList(undefined, { skip: isDemoMode() });
+  const products = isDemoMode() ? DEMO_PRODUCTS : realProducts;
+  const [create, { isLoading: creating }] = demoAwareBomApi.useCreate();
+  const [update, { isLoading: updating }] = demoAwareBomApi.useUpdate();
+  const [remove] = demoAwareBomApi.useDelete();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);

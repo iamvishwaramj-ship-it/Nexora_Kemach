@@ -25,6 +25,9 @@ import EntityListPagination from '../../components/data-display/EntityListPagina
 import { useNotify } from '../../components/feedback/NotificationProvider';
 import { productApi } from '../../features/resources';
 import { useCreateGenerationOrderMutation, useLazyGetMrpItemDetailQuery } from '../../features/productionPlanningApi';
+import { isDemoMode } from '../../lib/demoMode';
+import { DEMO_PRODUCTS, getDemoItemDetail } from '../../lib/demoData/productionPlanning';
+import { DEMO_GO_ID } from '../../lib/demoData/generationOrder';
 
 // ---------------------------------------------------------------------------
 // Generate Order - Manual — Phase 1 (MRP & Order Generation), approved
@@ -59,7 +62,9 @@ export default function GenerateOrderManual() {
   const [plant, setPlant] = useState('');
   const [notes, setNotes] = useState('');
 
-  const { data: products = [], isLoading: loadingProducts } = productApi.useList();
+  const { data: realProducts = [], isLoading: loadingProductsReal } = productApi.useList(undefined, { skip: isDemoMode() });
+  const products = isDemoMode() ? DEMO_PRODUCTS : realProducts;
+  const loadingProducts = isDemoMode() ? false : loadingProductsReal;
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(() => new Set());
   const [qtyByCode, setQtyByCode] = useState({});
@@ -69,8 +74,9 @@ export default function GenerateOrderManual() {
   const [activeItem, setActiveItem] = useState(null);
   const [expanded, setExpanded] = useState('routing');
 
-  const [fetchDetail, { data: detail, isFetching: loadingDetail }] = useLazyGetMrpItemDetailQuery();
+  const [fetchDetail, { data: realDetail, isFetching: loadingDetail }] = useLazyGetMrpItemDetailQuery();
   const [createGo, { isLoading: creatingGo }] = useCreateGenerationOrderMutation();
+  const detail = isDemoMode() ? getDemoItemDetail(activeItem) : realDetail;
 
   const rows = useMemo(() => products.filter((p) => {
     const q = search.trim().toLowerCase();
@@ -88,7 +94,7 @@ export default function GenerateOrderManual() {
     // '0' as a dummy runId — classifyProduct/BOM lookup is independent of any
     // MRP run; getMrpItemDetail just happens to be the existing read-only
     // endpoint for it, same one the MRP screen's side panel calls.
-    if (activeItem) fetchDetail({ runId: 0, productCode: activeItem });
+    if (activeItem && !isDemoMode()) fetchDetail({ runId: 0, productCode: activeItem });
   }, [activeItem, fetchDetail]);
 
   const allSelected = pagedRows.length > 0 && pagedRows.every((r) => selected.has(r.productCode));
@@ -122,6 +128,11 @@ export default function GenerateOrderManual() {
     const missingQty = selectedProducts.find((p) => !Number(qtyByCode[p.productCode]) || Number(qtyByCode[p.productCode]) <= 0);
     if (missingQty) {
       notify.error(`Enter an order quantity greater than 0 for ${missingQty.productCode}`);
+      return;
+    }
+    if (isDemoMode()) {
+      notify.success('Orders generated');
+      navigate(`/production-planning/generate-order?goId=${DEMO_GO_ID}`);
       return;
     }
     try {

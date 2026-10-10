@@ -15,6 +15,9 @@ import EntityHeaderCard from '../../components/common/EntityHeaderCard';
 import ScrollableTableContainer from '../../components/data-display/ScrollableTableContainer';
 import { useNotify } from '../../components/feedback/NotificationProvider';
 import { useListForecastPlansQuery, useGetForecastPlanQuery, useCreateGenerationOrderMutation } from '../../features/productionPlanningApi';
+import { isDemoMode } from '../../lib/demoMode';
+import { DEMO_FORECAST_PLANS, DEMO_FORECAST_PLAN_DETAIL } from '../../lib/demoData/forecast';
+import { DEMO_GO_ID } from '../../lib/demoData/generationOrder';
 
 // ---------------------------------------------------------------------------
 // Generate Order - Forecast — Phase 1 (MRP & Order Generation), approved
@@ -48,11 +51,14 @@ export default function GenerateOrderForecast() {
   const [plant, setPlant] = useState('');
   const [notes, setNotes] = useState('');
 
-  const { data: plans = [] } = useListForecastPlansQuery();
+  const { data: realPlans = [] } = useListForecastPlansQuery(undefined, { skip: isDemoMode() });
+  const plans = isDemoMode() ? DEMO_FORECAST_PLANS : realPlans;
   const [selectedPlanId, setSelectedPlanId] = useState(null);
   useEffect(() => { if (!selectedPlanId && plans.length > 0) setSelectedPlanId(plans[0].id); }, [plans, selectedPlanId]);
 
-  const { data: plan, isLoading: loadingPlan } = useGetForecastPlanQuery(selectedPlanId, { skip: !selectedPlanId });
+  const { data: realPlan, isLoading: loadingPlanReal } = useGetForecastPlanQuery(selectedPlanId, { skip: !selectedPlanId || isDemoMode() });
+  const plan = isDemoMode() ? DEMO_FORECAST_PLAN_DETAIL : realPlan;
+  const loadingPlan = isDemoMode() ? false : loadingPlanReal;
   const lines = useMemo(() => (plan?.lines || []).filter((l) => l.included !== false && Number(l.totalForecast) > 0), [plan]);
 
   const [selected, setSelected] = useState(() => new Set());
@@ -87,6 +93,11 @@ export default function GenerateOrderForecast() {
   const handleGenerate = async () => {
     if (selectedLines.length === 0) {
       notify.error('Select at least one forecast line first');
+      return;
+    }
+    if (isDemoMode()) {
+      notify.success('Orders generated');
+      navigate(`/production-planning/generate-order?goId=${DEMO_GO_ID}`);
       return;
     }
     try {

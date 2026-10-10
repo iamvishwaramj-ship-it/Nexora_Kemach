@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Card, CardContent, Stack, Typography, Grid, TextField, MenuItem, Button, Chip,
   Checkbox, InputAdornment, Table, TableHead, TableBody, TableRow, TableCell, IconButton,
 } from '@mui/material';
+import { useNotify } from '../../../components/feedback/NotificationProvider';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -27,7 +29,10 @@ import ScrollableTableContainer from '../../../components/data-display/Scrollabl
 // schema, so this lays out the form exactly as designed with fixed mock
 // data rather than fabricating "real" records against tables that don't
 // exist. Local state only -- nothing here persists or calls the server;
-// Submit Production/Save as Draft/Reset do not navigate or clear real data.
+// "Submit Production" and "Back to List" only navigate back to the
+// Production Execution list (with a confirmation toast on Submit), and
+// "Save as Draft" is toast-only. No execution record is actually written
+// anywhere since there is no backing table for one.
 // ---------------------------------------------------------------------------
 
 const ORDER = {
@@ -71,6 +76,8 @@ function numberFmt(n) {
 }
 
 export default function RecordProduction() {
+  const navigate = useNavigate();
+  const notify = useNotify();
   const [goodQty, setGoodQty] = useState(80);
   const [reworkQty, setReworkQty] = useState(0);
   const [scrapQty, setScrapQty] = useState(5);
@@ -102,6 +109,13 @@ export default function RecordProduction() {
   };
 
   const totalQty = Number(goodQty || 0) + Number(reworkQty || 0) + Number(scrapQty || 0);
+
+  const handleSubmitProduction = () => {
+    notify.success('Production recorded.');
+    navigate('/production-execution/production-execution-status');
+  };
+  const handleSaveAsDraft = () => notify.info('Saved as draft.');
+  const handleBackToList = () => navigate('/production-execution/production-execution-status');
 
   return (
     <Box>
@@ -497,11 +511,11 @@ export default function RecordProduction() {
 
       {/* Bottom action bar */}
       <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
-        <Button variant="outlined" startIcon={<ArrowBackOutlinedIcon />}>Back to List</Button>
+        <Button variant="outlined" startIcon={<ArrowBackOutlinedIcon />} onClick={handleBackToList}>Back to List</Button>
         <Box sx={{ flex: 1 }} />
-        <Button variant="outlined" startIcon={<RestartAltIcon />}>Reset</Button>
-        <Button variant="outlined" startIcon={<SaveOutlinedIcon />}>Save as Draft</Button>
-        <Button variant="contained" startIcon={<CheckCircleOutlineIcon />}>Submit Production</Button>
+        <Button variant="outlined" startIcon={<RestartAltIcon />} onClick={() => { setGoodQty(80); setReworkQty(0); setScrapQty(5); }}>Reset</Button>
+        <Button variant="outlined" startIcon={<SaveOutlinedIcon />} onClick={handleSaveAsDraft}>Save as Draft</Button>
+        <Button variant="contained" startIcon={<CheckCircleOutlineIcon />} onClick={handleSubmitProduction}>Submit Production</Button>
       </Stack>
     </Box>
   );

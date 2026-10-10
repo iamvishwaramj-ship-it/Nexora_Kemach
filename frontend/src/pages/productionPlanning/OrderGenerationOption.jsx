@@ -24,6 +24,8 @@ import { useNotify } from '../../components/feedback/NotificationProvider';
 import {
   useGetGenerationOrderQuery, useUpdateGenerationOrderMutation, useGenerateOrdersMutation,
 } from '../../features/productionPlanningApi';
+import { isDemoMode } from '../../lib/demoMode';
+import { DEMO_GENERATION_ORDER, DEMO_GO_ID } from '../../lib/demoData/generationOrder';
 
 // ---------------------------------------------------------------------------
 // Order Generation Options — Phase 1 (MRP & Order Generation), approved
@@ -56,11 +58,20 @@ export default function OrderGenerationOption() {
   const navigate = useNavigate();
   const notify = useNotify();
   const [searchParams] = useSearchParams();
-  const goId = Number(searchParams.get('goId')) || null;
+  // In demo mode, show the fixed demo Generation Order even if the screen
+  // is opened directly with no goId in the URL (see lib/demoMode.js) —
+  // outside demo mode this is unchanged: a missing goId still shows the
+  // "No Generation Order selected" guard below.
+  const goId = Number(searchParams.get('goId')) || (isDemoMode() ? DEMO_GO_ID : null);
 
-  const { data: go, isLoading, isError } = useGetGenerationOrderQuery(goId, { skip: !goId });
+  const { data: realGo, isLoading, isError } = useGetGenerationOrderQuery(goId, { skip: !goId || isDemoMode() });
   const [updateGo] = useUpdateGenerationOrderMutation();
   const [generateOrders, { isLoading: generating }] = useGenerateOrdersMutation();
+
+  // Client-demo path: frontend-only, uses a fixed static Generation Order
+  // instead of fetching from the backend (see lib/demoMode.js). Flip
+  // DEMO_MODE back to false to restore the real fetch above unchanged.
+  const go = isDemoMode() ? DEMO_GENERATION_ORDER : realGo;
 
   const [activeTab, setActiveTab] = useState('production');
   const [edits, setEdits] = useState({});
@@ -91,6 +102,11 @@ export default function OrderGenerationOption() {
 
   const handleSaveEdits = async () => {
     if (Object.keys(edits).length === 0) return;
+    if (isDemoMode()) {
+      setEdits({});
+      notify.success('Changes saved');
+      return;
+    }
     try {
       await updateGo({
         id: goId,
@@ -108,11 +124,16 @@ export default function OrderGenerationOption() {
   };
 
   const handleGenerate = async () => {
+    if (isDemoMode()) {
+      notify.success('Orders generated');
+      navigate(`/production-planning/generate-order?goId=${goId}`);
+      return;
+    }
     try {
       if (Object.keys(edits).length > 0) await handleSaveEdits();
       const result = await generateOrders(goId).unwrap();
       notify.success('Orders generated');
-      navigate(`/production-planning/generated-orders?goId=${goId}`);
+      navigate(`/production-planning/generate-order?goId=${goId}`);
     } catch (err) {
       notify.error(err?.data?.message || 'Could not generate orders');
     }

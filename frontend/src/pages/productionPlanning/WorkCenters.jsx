@@ -9,6 +9,9 @@ import EntityHeaderCard from '../../components/common/EntityHeaderCard';
 import { requiredString, optionalString, statusEnum, nonNegativeNumber, optionalNonNegativeNumber } from '../../lib/validation/common';
 import { branchApi } from '../../features/resources';
 import { workCenterApi } from '../../features/productionApi';
+import { isDemoMode } from '../../lib/demoMode';
+import { withDemoCrud } from '../../lib/demoCrud';
+import { DEMO_WORK_CENTERS, DEMO_BRANCHES } from '../../lib/demoData/productionPlanning';
 
 // Production Planning > Work Centers — Phase A manufacturing foundation. A
 // plain master (see schema.prisma's WorkCenter model / routes/
@@ -36,8 +39,16 @@ const columns = [
   { field: 'status', headerName: 'Status' },
 ];
 
+// Demo-mode-aware api: a pure pass-through to the real workCenterApi when
+// demo mode is off (see ../../lib/demoMode.js) — nothing about this screen's
+// behavior changes until that flag is flipped on for a client demo.
+const demoAwareWorkCenterApi = withDemoCrud(workCenterApi, DEMO_WORK_CENTERS);
+
 export default function WorkCenters() {
-  const { data: branches } = branchApi.useList();
+  // Skips the real network call in demo mode (no backend involvement at
+  // all), falling back to the fixed demo branch list instead.
+  const { data: realBranches } = branchApi.useList(undefined, { skip: isDemoMode() });
+  const branches = isDemoMode() ? DEMO_BRANCHES : realBranches;
   const branchOptions = (branches || []).map((b) => ({ label: b.branchName, value: b.branchName }));
 
   return (
@@ -52,7 +63,7 @@ export default function WorkCenters() {
         columns={columns}
         schema={schema}
         defaultValues={defaultValues}
-        api={workCenterApi}
+        api={demoAwareWorkCenterApi}
         formColumns={3}
         renderFields={() => (
           <>

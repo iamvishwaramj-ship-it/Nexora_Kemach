@@ -10,6 +10,17 @@ import EntityHeaderCard from '../../../components/common/EntityHeaderCard';
 import { useNotify } from '../../../components/feedback/NotificationProvider';
 import { productApi, branchApi, warehouseApi } from '../../../features/resources';
 import { bomApi, routingApi, productionOrderApi } from '../../../features/productionApi';
+import { isDemoMode } from '../../../lib/demoMode';
+import { withDemoCrud } from '../../../lib/demoCrud';
+import {
+  DEMO_PRODUCTS, DEMO_BRANCHES, DEMO_WAREHOUSES, DEMO_BOMS, DEMO_ROUTINGS, DEMO_PRODUCTION_ORDERS,
+} from '../../../lib/demoData/productionPlanning';
+
+// Demo-mode-aware api: a pure pass-through to the real productionOrderApi
+// when demo mode is off (see ../../../lib/demoMode.js). Shares the same
+// DEMO_PRODUCTION_ORDERS array reference as ProductionOrders.jsx and
+// ViewOrder.jsx, so a demo-created order shows up live in those screens.
+const demoAwareProductionOrderApi = withDemoCrud(productionOrderApi, DEMO_PRODUCTION_ORDERS);
 
 // Production Execution > Create Production Order — Phase A manufacturing
 // foundation. Unlike the other Production Execution "Create ..." screens
@@ -22,12 +33,19 @@ import { bomApi, routingApi, productionOrderApi } from '../../../features/produc
 export default function CreateProductionOrder() {
   const navigate = useNavigate();
   const notify = useNotify();
-  const { data: products } = productApi.useList();
-  const { data: branches } = branchApi.useList();
-  const { data: warehouses } = warehouseApi.useList();
-  const { data: boms } = bomApi.useList();
-  const { data: routings } = routingApi.useList();
-  const [createOrder, { isLoading: saving }] = productionOrderApi.useCreate();
+  const { data: realProducts } = productApi.useList(undefined, { skip: isDemoMode() });
+  const { data: realBranches } = branchApi.useList(undefined, { skip: isDemoMode() });
+  const { data: realWarehouses } = warehouseApi.useList(undefined, { skip: isDemoMode() });
+  const { data: realBoms } = bomApi.useList(undefined, { skip: isDemoMode() });
+  const { data: realRoutings } = routingApi.useList(undefined, { skip: isDemoMode() });
+  const products = isDemoMode() ? DEMO_PRODUCTS : realProducts;
+  const branches = isDemoMode() ? DEMO_BRANCHES : realBranches;
+  const warehouses = isDemoMode() ? DEMO_WAREHOUSES : realWarehouses;
+  const boms = isDemoMode() ? DEMO_BOMS : realBoms;
+  const routings = isDemoMode() ? DEMO_ROUTINGS : realRoutings;
+  const [createOrderReal, { isLoading: savingReal }] = productionOrderApi.useCreate();
+  const [createOrderDemo, { isLoading: savingDemo }] = demoAwareProductionOrderApi.useCreate();
+  const saving = isDemoMode() ? savingDemo : savingReal;
 
   const [productCode, setProductCode] = useState('');
   const [orderQty, setOrderQty] = useState('');
@@ -52,8 +70,52 @@ export default function CreateProductionOrder() {
     if (!Number.isFinite(qty) || qty <= 0) { setError('Enter a valid order quantity'); return; }
     if (!bomId && !defaultBom) { setError('No default active BOM for this product — select one explicitly'); return; }
 
+    if (isDemoMode()) {
+      const chosenBom = bomsForProduct.find((b) => b.id === bomId) || defaultBom || null;
+      const chosenRouting = routingsForProduct.find((r) => r.id === routingId) || routingsForProduct.find((r) => r.isDefault) || null;
+      const orderNo = `PO-2026-DEMO-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+      const order = {
+        productCode,
+        productName: selectedProduct?.productName || '',
+        uom: selectedProduct?.uom || '',
+        orderQty: qty,
+        status: 'Planned',
+        isCancelled: false,
+        orderNo,
+        plannedStartDate: plannedStartDate || null,
+        dueDate: dueDate || null,
+        warehouse: warehouse || null,
+        branch: branch || null,
+        notes: notes || '',
+        bom: chosenBom ? { bomCode: chosenBom.bomCode, version: chosenBom.version } : null,
+        routing: chosenRouting ? { routingCode: chosenRouting.routingCode, version: chosenRouting.version } : null,
+        baseType: null,
+        baseNo: null,
+        components: (chosenBom?.lines || []).map((l) => ({
+          id: l.id,
+          componentProductCode: l.componentProductCode,
+          componentProductName: l.componentProductName,
+          uom: l.uom,
+          plannedQty: Number(l.quantityPer) * qty,
+          issuedQty: 0,
+        })),
+        operations: chosenRouting?.operations || [],
+        createdByName: 'Demo User',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      try {
+        const created = await createOrderDemo(order).unwrap();
+        notify.success(`Production order ${created.orderNo} created`);
+        navigate(`/production-execution/view-order/${created.id}`);
+      } catch (err) {
+        notify.error('Could not create production order');
+      }
+      return;
+    }
+
     try {
-      const order = await createOrder({
+      const order = await createOrderReal({
         productCode,
         orderQty: qty,
         bomId: bomId || undefined,

@@ -28,6 +28,8 @@ import {
   useListMrpRunsQuery, useRunMrpMutation, useGetMrpRunQuery, useLazyGetMrpItemDetailQuery,
   useCreateGenerationOrderMutation,
 } from '../../features/productionPlanningApi';
+import { isDemoMode } from '../../lib/demoMode';
+import { DEMO_GO_ID } from '../../lib/demoData/generationOrder';
 
 // ---------------------------------------------------------------------------
 // Generate Order - MRP — Phase 1 (MRP & Order Generation), explicitly
@@ -156,6 +158,14 @@ export default function GenerateOrderMrp() {
   };
 
   const handleGenerate = async () => {
+    // Client-demo path: frontend-only, skips validation and the real
+    // backend call entirely (see lib/demoMode.js). Flip DEMO_MODE back to
+    // false to restore the real validation + API flow below unchanged.
+    if (isDemoMode()) {
+      notify.success('Orders generated');
+      navigate(`/production-planning/generate-order?goId=${DEMO_GO_ID}`);
+      return;
+    }
     if (selectedRows.length === 0) {
       notify.error('Select at least one item first');
       return;
@@ -487,7 +497,7 @@ export default function GenerateOrderMrp() {
           <Stack direction="row" spacing={1.5} justifyContent="flex-end" sx={{ mt: 2.5 }} flexWrap="wrap" useFlexGap>
             <Button
               variant="contained" color="warning" startIcon={creatingGo ? <CircularProgress size={16} color="inherit" /> : <SettingsSuggestIcon />}
-              onClick={handleGenerate} disabled={creatingGo || selected.size === 0}
+              onClick={handleGenerate} disabled={creatingGo}
             >
               Review &amp; Generate Orders
             </Button>

@@ -14,6 +14,14 @@ import { useNotify } from '../../components/feedback/NotificationProvider';
 import { useConfirm } from '../../components/feedback/ConfirmationDialog';
 import { productApi } from '../../features/resources';
 import { routingApi, workCenterApi } from '../../features/productionApi';
+import { isDemoMode } from '../../lib/demoMode';
+import { withDemoCrud } from '../../lib/demoCrud';
+import { DEMO_ROUTINGS, DEMO_PRODUCTS, DEMO_WORK_CENTERS } from '../../lib/demoData/productionPlanning';
+
+// Demo-mode-aware api: a pure pass-through to the real routingApi when demo
+// mode is off (see ../../lib/demoMode.js) — nothing about this screen's
+// behavior changes until that flag is flipped on for a client demo.
+const demoAwareRoutingApi = withDemoCrud(routingApi, DEMO_ROUTINGS);
 
 // Production Planning > Routing — Phase A manufacturing foundation. Same
 // minimum-UI convention as BillOfMaterials.jsx: a list + a single
@@ -31,12 +39,16 @@ function emptyHeader() {
 export default function Routings() {
   const notify = useNotify();
   const confirmDialog = useConfirm();
-  const { data: routings, isLoading } = routingApi.useList();
-  const { data: products } = productApi.useList();
-  const { data: workCenters } = workCenterApi.useList();
-  const [create, { isLoading: creating }] = routingApi.useCreate();
-  const [update, { isLoading: updating }] = routingApi.useUpdate();
-  const [remove] = routingApi.useDelete();
+  const { data: routings, isLoading } = demoAwareRoutingApi.useList();
+  // Skips the real network call in demo mode (no backend involvement at
+  // all), falling back to the fixed demo product/work-center lists instead.
+  const { data: realProducts } = productApi.useList(undefined, { skip: isDemoMode() });
+  const { data: realWorkCenters } = workCenterApi.useList(undefined, { skip: isDemoMode() });
+  const products = isDemoMode() ? DEMO_PRODUCTS : realProducts;
+  const workCenters = isDemoMode() ? DEMO_WORK_CENTERS : realWorkCenters;
+  const [create, { isLoading: creating }] = demoAwareRoutingApi.useCreate();
+  const [update, { isLoading: updating }] = demoAwareRoutingApi.useUpdate();
+  const [remove] = demoAwareRoutingApi.useDelete();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);

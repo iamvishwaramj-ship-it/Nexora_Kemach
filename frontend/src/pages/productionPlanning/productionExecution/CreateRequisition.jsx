@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Card, CardContent, Stack, Typography, Grid, TextField, MenuItem, Button, Checkbox,
   FormControlLabel, InputAdornment, Table, TableHead, TableBody, TableRow, TableCell, IconButton,
 } from '@mui/material';
+import { useNotify } from '../../../components/feedback/NotificationProvider';
 import PostAddIcon from '@mui/icons-material/PostAdd';
 import SearchIcon from '@mui/icons-material/Search';
 import AddIcon from '@mui/icons-material/Add';
@@ -29,7 +31,10 @@ import ScrollableTableContainer from '../../../components/data-display/Scrollabl
 // this schema, so this lays out the form exactly as designed with fixed
 // mock data rather than fabricating "real" records against tables that
 // don't exist. Local state only -- nothing here persists or calls the
-// server; Submit/Save as Draft/Reset do not navigate or clear real data.
+// server; "Create Requisition" and "Back to List" only navigate back to
+// the Material Requisition list (with a confirmation toast on Create), and
+// "Save as Draft" is toast-only. No requisition is actually written
+// anywhere since there is no backing table for one.
 // ---------------------------------------------------------------------------
 
 const REQUISITION_TYPES = ['Production', 'Maintenance', 'Tooling', 'Quality'];
@@ -50,6 +55,8 @@ function numberFmt(n) {
 }
 
 export default function CreateRequisition() {
+  const navigate = useNavigate();
+  const notify = useNotify();
   const [autoGenerate, setAutoGenerate] = useState(true);
   const [requisitionNo] = useState('MR-2026-013');
   const [requisitionDate, setRequisitionDate] = useState('2026-10-08');
@@ -91,6 +98,18 @@ export default function CreateRequisition() {
       { no: (prev[prev.length - 1]?.no || 0) + 1, code: '', desc: '', uom: '', required: 0, stock: 0, balance: 0, needBy: '', remarks: '' },
     ]);
   };
+
+  // No MaterialRequisition data model exists in this schema (see the note
+  // above), so there is nothing real to save here -- Create Requisition
+  // just confirms the action and takes the user back to the Material
+  // Requisition list, the same way CreateProductionOrder.jsx returns to its
+  // list after a (real) create.
+  const handleCreateRequisition = () => {
+    notify.success(`Material requisition ${requisitionNo} created.`);
+    navigate('/production-execution/material-requisition');
+  };
+  const handleSaveAsDraft = () => notify.info('Saved as draft.');
+  const handleBackToList = () => navigate('/production-execution/material-requisition');
 
   return (
     <Box>
@@ -333,11 +352,11 @@ export default function CreateRequisition() {
 
       {/* Bottom action bar */}
       <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
-        <Button variant="outlined" startIcon={<ArrowBackOutlinedIcon />}>Back to List</Button>
+        <Button variant="outlined" startIcon={<ArrowBackOutlinedIcon />} onClick={handleBackToList}>Back to List</Button>
         <Box sx={{ flex: 1 }} />
-        <Button variant="outlined" startIcon={<RestartAltIcon />}>Reset</Button>
-        <Button variant="outlined" startIcon={<SaveOutlinedIcon />}>Save as Draft</Button>
-        <Button variant="contained" startIcon={<SendOutlinedIcon />}>Submit for Approval</Button>
+        <Button variant="outlined" startIcon={<RestartAltIcon />} onClick={() => setItems(INITIAL_ITEMS)}>Reset</Button>
+        <Button variant="outlined" startIcon={<SaveOutlinedIcon />} onClick={handleSaveAsDraft}>Save as Draft</Button>
+        <Button variant="contained" startIcon={<SendOutlinedIcon />} onClick={handleCreateRequisition}>Create Requisition</Button>
       </Stack>
     </Box>
   );

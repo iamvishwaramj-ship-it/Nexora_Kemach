@@ -22,6 +22,8 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import EntityHeaderCard from '../../components/common/EntityHeaderCard';
 import ScrollableTableContainer from '../../components/data-display/ScrollableTableContainer';
 import { useGetProductionPlanningDashboardStatsQuery } from '../../features/productionPlanningApi';
+import { isDemoMode } from '../../lib/demoMode';
+import { DEMO_DASHBOARD_STATS } from '../../lib/demoData/dashboard';
 
 // ---------------------------------------------------------------------------
 // Production Dashboard — Phase 1 (MRP & Order Generation), approved scope,
@@ -80,7 +82,9 @@ function SampleDataBadge() {
 }
 
 export default function ProductionPlanningDashboard() {
-  const { data: stats, isLoading, refetch } = useGetProductionPlanningDashboardStatsQuery();
+  const { data: realStats, isLoading: isLoadingReal, refetch } = useGetProductionPlanningDashboardStatsQuery(undefined, { skip: isDemoMode() });
+  const stats = isDemoMode() ? DEMO_DASHBOARD_STATS : realStats;
+  const isLoading = isDemoMode() ? false : isLoadingReal;
 
   const statusCounts = stats?.orderStatusCounts || {};
   const orderStatusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value, color: STATUS_COLOR[name] || '#9e9e9e' }));

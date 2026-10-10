@@ -395,6 +395,17 @@ export default function AppRouter() {
             <Route path="payment-voucher/create" element={<PaymentVoucher />} />
           </Route>
 
+          {/* Production Master -- own top-level menu, sibling to and placed
+              directly above Production Planning. Reuses the same Bill of
+              Materials screen/component as Production Planning > Bill of
+              Materials (no separate BOM data model -- it's the same
+              production/boms resource, just reachable from a second place
+              in the sidebar). */}
+          <Route path="production-master">
+            <Route index element={<SubMenuIndexPage navKey="production-master" />} />
+            <Route path="bom" element={<BillOfMaterials />} />
+          </Route>
+
           {/* Production Planning */}
           <Route path="production-planning">
             <Route index element={<SubMenuIndexPage navKey="production-planning" />} />
